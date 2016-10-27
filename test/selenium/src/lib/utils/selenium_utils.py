@@ -57,6 +57,18 @@ def get_when_visible(driver, locator):
       .until(EC.presence_of_element_located(locator))
 
 
+def wait_until_condition(driver, condition):
+  """Wait until given expected condition is met"""
+  WebDriverWait(
+      driver,
+      constants.ux.MAX_USER_WAIT_SECONDS).until(condition)
+
+
+def wait_until_not_present(driver, locator):
+  """Wait until no element(-s) for locator given are present in the DOM."""
+  wait_until_condition(driver, lambda d: len(d.find_elements(*locator)) == 0)
+
+
 def get_when_all_visible(driver, locator):
   """Return WebElements by locator when all of them are visible.
 
