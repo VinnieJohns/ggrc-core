@@ -1,6 +1,6 @@
 # Copyright (C) 2016 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-
+import string
 """All objects supported by the app"""
 
 PROGRAMS = "programs"
@@ -31,6 +31,15 @@ FACILITIES = "facilities"
 MARKETS = "markets"
 RISKS = "risks"
 THREATS = "threats"
+RISK_ASSESSMENTS = "risk_assessments"
+
+all_objects = (WORKFLOWS, RISK_ASSESSMENTS, THREATS, RISKS,
+               PROGRAMS, AUDITS, OBJECTIVES, SECTIONS,
+               CONTROLS, ISSUES, ASSESSMENTS, STANDARDS,
+               REGULATIONS, POLICIES, CONTRACTS, CLAUSES,
+               REQUESTS, VENDORS, PEOPLE, ACCESS_GROUPS,
+               ORG_GROUPS, PRODUCTS, MARKETS, PROCESSES,
+               FACILITIES, PROJECTS, DATA_ASSETS, SYSTEMS)
 
 
 def _get_singular(plurals):
@@ -66,3 +75,25 @@ def get_singular(plural):
 ALL_PLURAL = [k for k in globals().keys()
               if not k.startswith("_") or k == "ALL"]
 ALL_SINGULAR = _get_singular(ALL_PLURAL)
+
+
+def get_normal_form(obj_name):
+  """Transform object name to title form.
+
+  Example:
+    risk_assessments -> Risk Assessments
+  """
+  return " ".join(
+      [_.capitalize() for _ in string.replace(obj_name, "_", " ").split(" ")]
+  )
+
+
+def get_object_name_form(title):
+  """Transform title to object name form.
+
+    Example:
+      Risk Assessments -> risk_assessments
+    """
+  return " ".join(
+      [_.lower().title() for _ in string.replace(title, " ", "_").split(" ")]
+  )
