@@ -74,14 +74,14 @@ class CustomAttributes(widget_base.WidgetAdminCustomAttributes):
 
   def expand_collapse_group(self, item_title, expand=True):
     """Expand/collapse 2-nd tier of tree-view item."""
-    self.ca_tree_view.get_tree_view_items()
-    for i in self.ca_tree_view.tree_view_items:
+    items = self.get_items_list()
+    for i in items:
       if i.text == item_title:
         if expand:
           return i.expand()
         else:
           return i.collapse()
-    raise exception.ElementNotFound(item_title)
+    raise exception.ElementNotFound('{} in list {}'.format(item_title, items))
 
   def get_items_list(self):
     """Return TreeViewItem objects from the current widget."""
