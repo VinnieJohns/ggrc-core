@@ -6,18 +6,22 @@
 import random
 import string
 
+COMMA = ','
+BLANK = ''
+SPECIAL = string.punctuation.replace(COMMA,BLANK)
 
-def random_string(size=5, chars=string.letters + string.digits):
+
+def random_string(size=5, chars=string.letters + string.digits + SPECIAL):
   """Return string with corresponding size that filled by values from selected
   chars.
   """
-  return ''.join(random.choice(chars) for position in range(size))
+  return BLANK.join(random.choice(chars) for position in range(size))
 
 
 def random_list_of_strings(
-    list_len=3, item_size=5, chars=string.letters + string.digits):
+    list_len=3, item_size=5, chars=string.letters + string.digits + SPECIAL):
   """Return list of random strings separated by comma"""
-  return ','.join(random_string(item_size, chars) for item in range(list_len))
+  return COMMA.join(random_string(item_size, chars) for i in range(list_len))
 
 
 def get_bool_from_string(str_to_bool):
