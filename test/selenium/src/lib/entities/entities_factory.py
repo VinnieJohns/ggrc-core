@@ -9,7 +9,7 @@ import random
 from lib.constants import objects
 from lib.constants.element import AttributesTypes
 from lib.entities import entity
-from lib.utils.string_utils import random_list_of_strings
+from lib.utils.string_utils import random_list_of_strings, random_string
 from lib.utils.test_utils import append_random_string
 
 
@@ -36,10 +36,13 @@ class CAFactory(object):
     """Create random CustomAttribute entity."""
     random_ca = entity.CustomAttribute()
     random_ca.ca_type = random.choice(AttributesTypes.ALL_TYPES)
-    random_ca.title = append_random_string(
-        "{}_".format(random_ca.ca_type))
+    random_ca.title = self._generate_title(random_ca.ca_type)
     random_ca.definition_type = random.choice(objects.all_objects)
     return random_ca
+
+  def _generate_title(self, ca_type):
+    """Generate title according to CustomAttribute type."""
+    return append_random_string("{}_{}_".format(ca_type, random_string()))
 
   def _fill_ca_entity_fields(self, title,
                              ca_type, definition_type,
@@ -47,12 +50,13 @@ class CAFactory(object):
                              multi_choice_options, mandatory,
                              ca_global, ca_object):
     """Set the CustomAttributes object's attributes."""
-    if title:
-      ca_object.title = title
     if ca_type:
       ca_object.ca_type = ca_type
+      ca_object.title = self._generate_title(ca_type)
     if definition_type:
       ca_object.definition_type = definition_type
+    if title:
+      ca_object.title = title
 
     # "Placeholder" field exists only for Text and Rich Text.
     if placeholder and ca_object.ca_type in (AttributesTypes.TEXT,
