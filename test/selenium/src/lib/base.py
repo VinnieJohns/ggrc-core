@@ -536,7 +536,8 @@ class TreeView(Component):
 
   def get_tree_view_items(self):
     """Return list of TreeViewItem objects."""
-    self._set_tree_view_items()
+    if not self.tree_view_items:
+      self._set_tree_view_items()
     return self.tree_view_items
 
 
