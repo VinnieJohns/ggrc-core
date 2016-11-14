@@ -99,7 +99,7 @@ class CustomAttributesDropdown(base.Component):
           CustomAttribute(
               title=attr[0],
               ca_type=attr[1],
-              mandatory=get_bool_from_string(attr[2])))
+              is_mandatory=get_bool_from_string(attr[2])))
 
   def get_custom_attributes_list(self):
     """Returns list of CustomAttribute objects."""

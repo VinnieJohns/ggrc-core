@@ -67,7 +67,7 @@ class TestAdminDashboardPage(base.Test):
 
   @pytest.mark.smoke_tests
   @pytest.mark.parametrize("ca_type, def_type",
-                           [(ca_type_item ,random.choice(objects.all_objects))
+                           [(ca_type_item, random.choice(objects.all_objects))
                             for ca_type_item in AttributesTypes.ALL_TYPES])
   def test_add_global_ca(self, admin_dashboard, ca_type, def_type):
     """Create different types of Custom Attribute on Admin Dashboard."""
@@ -76,5 +76,7 @@ class TestAdminDashboardPage(base.Test):
         definition_type=def_type)
     ca_widget = admin_dashboard.select_custom_attributes()
     ca_widget.add_custom_attribute(exp_custom_attribute)
-    act_ca_list = ca_widget.get_custom_attributes_list(def_type)
+    act_ca_list = ca_widget.get_custom_attributes_list(
+        exp_custom_attribute.definition_type
+    )
     assert exp_custom_attribute in act_ca_list
