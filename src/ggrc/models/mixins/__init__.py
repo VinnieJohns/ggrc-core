@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Mixins to add common attributes and relationships. Note, all model classes
@@ -16,10 +16,10 @@ color
 # All declared_attr properties that are class level as per sqlalchemy
 # documentatio, are reported as false positives by pylint.
 
+from logging import getLogger
 from uuid import uuid1
 import datetime
 
-from flask import current_app
 from sqlalchemy import event
 from sqlalchemy import orm
 from sqlalchemy.ext.declarative import declared_attr
@@ -34,6 +34,11 @@ from ggrc.models.deferred import deferred
 from ggrc.models.inflector import ModelInflectorDescriptor
 from ggrc.models.reflection import AttributeInfo
 from ggrc.models.mixins.customattributable import CustomAttributable
+from ggrc.models.mixins.notifiable import Notifiable
+
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 
 class Identifiable(object):
@@ -44,7 +49,6 @@ class Identifiable(object):
   # REST properties
   _publish_attrs = ['id', 'type']
   _update_attrs = []
-  _stub_attrs = ['id', 'type']
 
   _inflector = ModelInflectorDescriptor()
 
@@ -92,31 +96,12 @@ class Identifiable(object):
       table_args.append(table_dict)
     return tuple(table_args,)
 
-  # FIXME: This is not the right place, but there is no better common base
-  # FIXME: class. I don't know what copy_into is used for. My guess would
-  # FIXME: be cloning of some sort. I'm not sure that this code will work
-  # FIXME: with custom attributes.
-  def copy_into(self, _other, columns, **kwargs):
-    target = _other or type(self)()
-
-    columns = set(columns).union(kwargs.keys())
-    for name in columns:
-      if name in kwargs:
-        value = kwargs[name]
-      else:
-        value = getattr(self, name)
-      setattr(target, name, value)
-
-    return target
-
 
 class ChangeTracked(object):
 
   """A model with fields to tracked the last user to modify the model, the
   creation time of the model, and the last time the model was updated.
   """
-  # FIXME: change modified_by_id to nullable=False when there is an Account
-  # model
   @declared_attr
   def modified_by_id(cls):
     return deferred(db.Column(db.Integer), cls.__name__)
@@ -169,6 +154,12 @@ class ChangeTracked(object):
 
 
 class Titled(object):
+
+  @validates('title')
+  def validate_title(self, key, value):
+    """Validates and cleans Title that has leading/trailing spaces"""
+    # pylint: disable=unused-argument,no-self-use
+    return value if value is None else value.strip()
 
   @declared_attr
   def title(cls):
@@ -284,16 +275,27 @@ class Timeboxed(object):
       "end_date": "Stop Date",
   }
 
+  _fulltext_attrs = [
+      'start_date',
+      'end_date'
+  ]
+
 
 class Stateful(object):
 
   @declared_attr
   def status(cls):
-    return deferred(
-        db.Column(db.String, default=cls.default_status), cls.__name__)
+    return deferred(db.Column(
+        db.String, default=cls.default_status, nullable=False), cls.__name__)
 
   _publish_attrs = ['status']
-  _aliases = {"status": "State"}
+  _fulltext_attrs = ['status']
+  _aliases = {
+      "status": {
+          "display_name": "State",
+          "mandatory": False
+      }
+  }
 
   @classmethod
   def default_status(cls):
@@ -450,6 +452,23 @@ class Base(ChangeTracked, ContextRBAC, Identifiable):
   """Several of the models use the same mixins. This class covers that common
   case.
   """
+  _people_log_mappings = [
+      "principal_assessor_id",
+      "secondary_assessor_id",
+      "contact_id",
+      "secondary_contact_id",
+      "modified_by_id",
+      "attribute_object_id",  # used for person mapping CA
+  ]
+
+  @staticmethod
+  def _person_stub(id_):
+    return {
+        'type': u"Person",
+        'id': id_,
+        'context_id': None,
+        'href': u"/api/people/{}".format(id_),
+    }
 
   def log_json(self):
     # to integrate with CustomAttributable without order dependencies
@@ -460,19 +479,57 @@ class Base(ChangeTracked, ContextRBAC, Identifiable):
       except AttributeError:
         pass
     res['display_name'] = self.display_name
+
+    for attr in self._people_log_mappings:
+      if hasattr(self, attr):
+        value = getattr(self, attr)
+        res[attr[:-3]] = self._person_stub(value) if value else None
+    if hasattr(self, "owners"):
+      res["owners"] = [
+          self._person_stub(owner.id) for owner in self.owners if owner
+      ]
+
     return res
 
   @computed_property
   def display_name(self):
     try:
       return self._display_name()
-    except:
-      current_app.logger.warn(
-          "display_name error in {}".format(type(self)), exc_info=True)
+    except:  # pylint: disable=bare-except
+      logger.warning("display_name error in %s", type(self), exc_info=True)
       return ""
 
   def _display_name(self):
     return getattr(self, "title", None) or getattr(self, "name", "")
+
+  def copy_into(self, target_object, columns, **kwargs):
+    """Copy current object values into a target object.
+
+    Copy all values listed in columns from current class to target class and
+    use kwargs as defaults with precedence. Note that this is a shallow copy
+    and any mutable values will be shared between current and target objects.
+
+    Args:
+      target_object: object to which we want to copy current values. This
+        function will mutate the target_object parameter if it is set.
+      columns: list with all attribute names that we want to set in the
+        target_object.
+      kwargs: additional default values.
+
+    Returns:
+      target_object with all values listed in columns set.
+    """
+    target = target_object or type(self)()
+
+    columns = set(columns).union(kwargs.keys())
+    for name in columns:
+      if name in kwargs:
+        value = kwargs[name]
+      else:
+        value = getattr(self, name)
+      setattr(target, name, value)
+
+    return target
 
 
 class Slugged(Base):
@@ -547,16 +604,10 @@ class Slugged(Base):
         o.generate_slug_for(o)
         delattr(o, '_replace_slug')
 
+
 event.listen(Session, 'before_flush', Slugged.ensure_slug_before_flush)
 event.listen(
     Session, 'after_flush_postexec', Slugged.ensure_slug_after_flush_postexec)
-
-
-class Mapping(Stateful, Base):
-  VALID_STATES = (
-      'Draft',
-      'Final',
-  )
 
 
 class WithContact(object):
@@ -628,15 +679,18 @@ class BusinessObject(Stateful, Noted, Described, Hyperlinked, WithContact,
                      Titled, Slugged):
   VALID_STATES = (
       'Draft',
-      'Final',
-      'Effective',
-      'Ineffective',
-      'Launched',
-      'Not Launched',
-      'In Scope',
-      'Not in Scope',
-      'Deprecated',
+      'Active',
+      'Deprecated'
   )
+
+  _aliases = {
+      "status": {
+          "display_name": "State",
+          "mandatory": False,
+          "description": "Options are:\n{}".format('\n'.join(VALID_STATES))
+      }
+  }
+
 
 # This class is just a marker interface/mixin to indicate that a model type
 # supports custom attributes.
@@ -656,23 +710,23 @@ class TestPlanned(object):
 
 
 __all__ = [
-    Base,
-    BusinessObject,
-    ChangeTracked,
-    ContextRBAC,
-    CustomAttributable,
-    Described,
-    FinishedDate,
-    Hierarchical,
-    Hyperlinked,
-    Identifiable,
-    Mapping,
-    Noted,
-    Slugged,
-    Stateful,
-    TestPlanned,
-    Timeboxed,
-    Titled,
-    VerifiedDate,
-    WithContact,
+    "Base",
+    "BusinessObject",
+    "ChangeTracked",
+    "ContextRBAC",
+    "CustomAttributable",
+    "Described",
+    "FinishedDate",
+    "Hierarchical",
+    "Hyperlinked",
+    "Identifiable",
+    "Noted",
+    "Notifiable",
+    "Slugged",
+    "Stateful",
+    "TestPlanned",
+    "Timeboxed",
+    "Titled",
+    "VerifiedDate",
+    "WithContact",
 ]

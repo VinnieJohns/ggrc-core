@@ -1,12 +1,15 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Handlers for boolean attributes."""
 
-import traceback
-from flask import current_app
+from logging import getLogger
 
 from ggrc.converters import errors
 from ggrc.converters.handlers import handlers
+
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 
 class CheckboxColumnHandler(handlers.ColumnHandler):
@@ -19,13 +22,15 @@ class CheckboxColumnHandler(handlers.ColumnHandler):
   ALLOWED_VALUES = {"yes", "true", "no", "false", "--", "---"}
   TRUE_VALUES = {"yes", "true"}
   NONE_VALUES = {"--", "---"}
+  _true = "yes"
+  _false = "no"
 
   def parse_item(self):
     """ mandatory checkboxes will get evelauted to false on empty value """
     if self.raw_value == "":
       return False
     value = self.raw_value.lower() in self.TRUE_VALUES
-    if self.raw_value == self.NONE_VALUES:
+    if self.raw_value in self.NONE_VALUES:
       value = None
     if self.raw_value.lower() not in self.ALLOWED_VALUES:
       self.add_warning(errors.WRONG_VALUE, column_name=self.display_name)
@@ -35,7 +40,7 @@ class CheckboxColumnHandler(handlers.ColumnHandler):
     val = getattr(self.row_converter.obj, self.key, False)
     if val is None:
       return "--"
-    return "true" if val else "false"
+    return self._true if val else self._false
 
   def set_obj_attr(self):
     """ handle set object for boolean values
@@ -43,12 +48,12 @@ class CheckboxColumnHandler(handlers.ColumnHandler):
     This is the only handler that will allow setting a None value"""
     try:
       setattr(self.row_converter.obj, self.key, self.value)
-    except Exception:  # pylint: disable=broad-except
+    except:  # pylint: disable=bare-except
       self.row_converter.add_error(errors.UNKNOWN_ERROR)
-      trace = traceback.format_exc()
-      error = "Import failed with:\nsetattr({}, {}, {})\n{}".format(
-          self.row_converter.obj, self.key, self.value, trace)
-      current_app.logger.error(error)
+      logger.exception(
+          "Import failed with setattr(%r, %r, %r)",
+          self.row_converter.obj, self.key, self.value
+      )
 
 
 class KeyControlColumnHandler(CheckboxColumnHandler):
@@ -60,4 +65,5 @@ class KeyControlColumnHandler(CheckboxColumnHandler):
 
   ALLOWED_VALUES = {"key", "non-key", "--", "---"}
   TRUE_VALUES = {"key"}
-  NONE_VALUES = {"--", "---"}
+  _true = "key"
+  _false = "non-key"

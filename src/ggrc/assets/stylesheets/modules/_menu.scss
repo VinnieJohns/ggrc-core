@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -20,9 +20,8 @@
       font-weight: bold;
       line-height: 16px;
       text-align: center;
-      width: 14px;
       height: 16px;
-      padding: 0 2px 0 1px;
+      padding: 0 5px;
       display: inline-block;
     }
     &.user {
@@ -99,14 +98,14 @@
 small {
   &.count {
     @include border-radius(4px);
-    background: $error;
+    background: #777;
+    &.critical {
+      background: $error;
+    }
     text-align: center;
     text-shadow: none;
     color: $white;
     padding: 0 0 0 1px;
-    &.count-zero {
-      background:#777;
-    }
   }
 }
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Move cycle objects to relationships table
@@ -29,7 +29,7 @@ def upgrade():
   sql = """
     INSERT INTO relationships(
         created_at, updated_at, source_id, source_type, destination_id,
-        destination_type, status, context_id
+        destination_type, context_id
     )
     SELECT
         ctgot.created_at,
@@ -38,7 +38,6 @@ def upgrade():
         "CycleTaskGroupObjectTask" AS task_type,
         ctgo.object_id,
         ctgo.object_type,
-        "Draft" AS task_state,
         ctgot.context_id
     FROM cycle_task_group_object_tasks AS ctgot
         LEFT JOIN cycle_task_group_objects AS ctgo

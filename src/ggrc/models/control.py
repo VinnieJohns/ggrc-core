@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for control model and related classes."""
@@ -16,7 +16,6 @@ from ggrc.models.mixins import Hierarchical
 from ggrc.models.mixins import TestPlanned
 from ggrc.models.mixins import Timeboxed
 from ggrc.models.deferred import deferred
-from ggrc.models.object_document import Documentable
 from ggrc.models.object_owner import Ownable
 from ggrc.models.object_person import Personable
 from ggrc.models.option import Option
@@ -24,7 +23,6 @@ from ggrc.models.person import Person
 from ggrc.models.reflection import PublishOnly
 from ggrc.models.relationship import Relatable
 from ggrc.models.track_object_state import HasObjectState
-from ggrc.models.track_object_state import track_state_for_class
 from ggrc.models.utils import validate_option
 
 
@@ -109,7 +107,7 @@ class AssertionCategorized(Categorizable):
     )
 
 
-class Control(HasObjectState, Relatable, CustomAttributable, Documentable,
+class Control(HasObjectState, Relatable, CustomAttributable,
               Personable, ControlCategorized, AssertionCategorized,
               Hierarchical, Timeboxed, Ownable, Auditable,
               TestPlanned, BusinessObject, db.Model):
@@ -205,7 +203,10 @@ class Control(HasObjectState, Relatable, CustomAttributable, Documentable,
           "display_name": "Secondary Assessor",
           "filter_by": "_filter_by_secondary_assessor",
       },
-      "key_control": "Significance",
+      "key_control": {
+          "display_name": "Significance",
+          "description": "Allowed values are:\nkey\nnon-key\n---",
+      }
   }
 
   @validates('kind', 'means', 'verify_frequency')
@@ -261,5 +262,3 @@ class Control(HasObjectState, Relatable, CustomAttributable, Documentable,
     if self.directive:
       out_json["mapped_directive"] = self.directive.display_name
     return out_json
-
-track_state_for_class(Control)

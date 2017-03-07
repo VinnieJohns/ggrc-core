@@ -1,10 +1,9 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 .footer {
-  margin-top: 500px;
   overflow: hidden;
   border-top: 1px solid $footerBorder;
   background: #eee;
@@ -14,12 +13,10 @@
   right: 0;
   bottom: 0;
   width: 100%;
-  p {
-    margin: 0;
-    line-height: 39px;
-    color:$headerTitle;
-    font-size:12px;
-    text-align: right;
-    padding-right:20px;
-  }
+  line-height: 39px;
+  color:$headerTitle;
+  font-size:12px;
+  text-align: right;
+  padding-right:20px;
+  box-sizing: border-box;
 }

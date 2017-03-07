@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Define the WorkflowTestCase with the Workflowgenerator"""
 
@@ -11,8 +11,7 @@ from integration.ggrc.generator import ObjectGenerator
 class WorkflowTestCase(TestCase):
 
   def setUp(self):
-    # old-style class
-    TestCase.setUp(self)
+    super(WorkflowTestCase, self).setUp()
     self.api = Api()
     self.generator = WorkflowsGenerator()
     self.object_generator = ObjectGenerator()

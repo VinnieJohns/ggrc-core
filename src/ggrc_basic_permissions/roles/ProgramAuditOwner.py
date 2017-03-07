@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """A module with configuration of the ProgramAuditOwner role's permissions."""
@@ -13,12 +13,12 @@ description = """
   """
 permissions = {
     "read": [
-        "Request",
         "Assessment",
         "AssessmentTemplate",
         "Issue",
         "UserRole",
         "Audit",
+        "Snapshot",
         "AuditObject",
         "Meeting",
         "ObjectControl",
@@ -30,12 +30,12 @@ permissions = {
         "Context",
     ],
     "create": [
-        "Request",
         "Assessment",
         "AssessmentTemplate",
         "Issue",
         "UserRole",
         "Audit",
+        "Snapshot",
         "AuditObject",
         "Meeting",
         "ObjectControl",
@@ -49,12 +49,12 @@ permissions = {
         "__GGRC_ALL__"
     ],
     "update": [
-        "Request",
         "Assessment",
         "AssessmentTemplate",
         "Issue",
         "UserRole",
         "Audit",
+        "Snapshot",
         "AuditObject",
         "Meeting",
         "ObjectControl",
@@ -66,7 +66,6 @@ permissions = {
     ],
     "delete": [
         "UserRole",
-        "Request",
         "Assessment",
         "AssessmentTemplate",
         "Issue",

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -81,6 +81,8 @@
           widget_name: 'Risk Assessments',
           content_controller: GGRC.Controllers.TreeView,
           content_controller_options: {
+            add_item_view: GGRC.mustache_path +
+              '/risk_assessments/tree_add_item.mustache',
             mapping: 'risk_assessments',
             parent_instance: page_instance,
             model: CMS.Models.RiskAssessment,

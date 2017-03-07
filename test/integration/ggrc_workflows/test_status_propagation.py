@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for workflow cycle state propagation between tasks and task groups"""
@@ -22,7 +22,7 @@ class TestWorkflowCycleStatePropagantion(TestCase):
   """Test case for cycle task to cycle task group status propagation"""
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestWorkflowCycleStatePropagantion, self).setUp()
     self.api = Api()
     self.generator = WorkflowsGenerator()
     self.object_generator = ObjectGenerator()

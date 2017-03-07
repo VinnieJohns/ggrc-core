@@ -1,9 +1,11 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Initialize RBAC"""
 
 import datetime
+import itertools
+
 import sqlalchemy.orm
 from sqlalchemy import and_
 from sqlalchemy import case
@@ -12,6 +14,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from flask import Blueprint
 from flask import g
+
 from ggrc import db
 from ggrc import settings
 from ggrc.app import app
@@ -145,107 +148,6 @@ def objects_via_assignable_query(user_id, context_not_role=True):
           ], else_=rel1.destination_type) == rel2.source_type))
   )
   return mapped_objects.union(assigned_objects)
-
-
-def objects_via_relationships_query(model, roles, user_id, context_not_role):
-  """Creates a query that returns objects a user can access via mappings.
-
-    Args:
-        model: base model upon the roles are given
-        roles: list of roles names to check
-        user_id: id of the user
-        context_not_role: use context instead of the role for the third column
-            in the search api we need to return (obj_id, obj_type, context_id),
-            but in ggrc_basic_permissions we need a role instead of a
-            context_id (obj_id, obj_type, role_name)
-
-    Returns:
-        db.session.query object that selects the following columns:
-            | id | type | role_name or context |
-        Rows represent objects that are mapped to objects of the given model
-        (where the user has a listed role) and the corresponding relationships.
-  """
-  _role = aliased(all_models.Role, name="r")
-  _implications = aliased(all_models.ContextImplication, name="ci")
-  _model = aliased(model, name="p")
-  _relationship = aliased(all_models.Relationship, name="rl")
-  _user_role = aliased(all_models.UserRole, name="ur")
-
-  def _join_filter(query, cond):
-    """Filter a query based on user roles
-
-    Args:
-        query (sqlalchemy.orm.query.Query): query to be filtered
-        cond (sqlalchemy.sql.elements.BooleanClauseList): condition used for
-            the initial model query
-
-    Returns:
-        query (sqlalchemy.orm.query.Query): object with applied conditions
-    """
-    user_role_cond = and_(_user_role.person_id == user_id,
-                          _user_role.context_id == _implications.context_id)
-    role_cond = and_(_user_role.role_id == _role.id,
-                     _role.name.in_(roles))
-    return query.join(_model, cond).join(
-        _implications, _model.context_id == _implications.source_context_id).\
-        join(_user_role, user_role_cond).\
-        join(_role, role_cond).\
-        distinct().\
-        union(query.join(_model, cond).join(
-            _implications, _model.context_id == _implications.context_id).
-        join(_user_role, user_role_cond).
-        join(_role, role_cond).
-        distinct())
-
-  def _add_relationship_join(query):
-    # We do a UNION here because using an OR to JOIN both destination
-    # and source causes a full table scan
-    return _join_filter(query,
-                        and_(_relationship.source_type == model.__name__,
-                             _model.id == _relationship.source_id))\
-        .union(_join_filter(
-            query,
-            and_(_relationship.destination_type == model.__name__,
-                 _model.id == _relationship.destination_id)
-        ))
-
-  objects = _add_relationship_join(db.session.query(
-      case([
-          (_relationship.destination_type == model.__name__,
-           _relationship.source_id.label('id'))
-      ], else_=_relationship.destination_id.label('id')),
-      case([
-          (_relationship.destination_type == model.__name__,
-           _relationship.source_type.label('type'))
-      ], else_=_relationship.destination_type.label('type')),
-      literal(None).label('context_id') if context_not_role else _role.name))
-
-  # We also need to return relationships themselves:
-  relationships = _add_relationship_join(db.session.query(
-      _relationship.id, literal("Relationship"), _relationship.context_id))
-  return objects.union(relationships)
-
-
-def program_relationship_query(user_id, context_not_role=False):
-  """Creates a query that returns objects a user can access via program.
-
-    Args:
-        user_id: id of the user
-        context_not_role: use context instead of the role for the third column
-            in the search api we need to return (obj_id, obj_type, context_id),
-            but in ggrc_basic_permissions we need a role instead of a
-            context_id (obj_id, obj_type, role_name)
-
-    Returns:
-        db.session.query object that selects the following columns:
-            | id | type | role_name or context |
-  """
-  return objects_via_relationships_query(
-      model=all_models.Program,
-      roles=('ProgramEditor', 'ProgramOwner', 'ProgramReader'),
-      user_id=user_id,
-      context_not_role=context_not_role
-  )
 
 
 class CompletePermissionsProvider(object):
@@ -745,7 +647,7 @@ def load_permissions_for(user):
                                       [conditions][context][context_conditions]
 
   'action' is one of 'create', 'read', 'update', 'delete'.
-  'resource_type' is the name of a valid gGRC resource type.
+  'resource_type' is the name of a valid GGRC resource type.
   'contexts' is a list of context_id where the action is allowed.
   'conditions' is a dictionary of 'context_conditions' indexed by 'context'
     where 'context' is a context_id.
@@ -793,6 +695,31 @@ def load_permissions_for(user):
 
   with benchmark("load_permissions > load backlog workflows"):
     load_backlog_workflows(permissions)
+
+  # If user has 'update' rights for 'Assessment' he should have the same
+  # rights for linked 'Document'. In such case user have opportunity to
+  # remove mapping from 'Assessment' to 'Document'.
+  relationship_objs = db.session.query(all_models.Relationship).filter(
+      and_(
+          all_models.Relationship.source_type == "Assessment",
+          all_models.Relationship.destination_type == "Document"
+      )
+  ).all()
+  relationship_dict = {}
+  for rel in relationship_objs:
+    relationship_dict.setdefault(rel.source_id, [])
+    relationship_dict[rel.source_id].append(rel.id)
+  permissions.setdefault(
+      "delete", {}).setdefault("Relationship", {}).setdefault("resources", [])
+  for assess_id in permissions.get("update", {}).get(
+          "Assessment", {}).get("resources", []):
+    if assess_id in relationship_dict.keys():
+      permissions["delete"]["Relationship"]["resources"].extend(
+          relationship_dict[assess_id]
+      )
+  permissions["delete"]["Relationship"]["resources"] = list(
+      set(permissions["delete"]["Relationship"]["resources"])
+  )
 
   with benchmark("load_permissions > store results into memcache"):
     store_results_into_memcache(permissions, cache, key)
@@ -935,11 +862,12 @@ def create_audit_context(audit):
   audit.context = context
 
 
-@Resource.model_posted.connect_via(Audit)
-def handle_audit_post(sender, obj=None, src=None, service=None):
-  if not src.get("operation", None):
-    db.session.flush()
-    create_audit_context(obj)
+@Resource.collection_posted.connect_via(Audit)
+def handle_audit_post(sender, objects=None, sources=None):
+  for obj, src in itertools.izip(objects, sources):
+    if not src.get("operation", None):
+      db.session.flush()
+      create_audit_context(obj)
 
 
 @Resource.model_deleted.connect
@@ -961,20 +889,6 @@ def handle_resource_deleted(sender, obj=None, service=None):
     #   cascading to delete those, just leave the `Context` object in place.
     #   It and its objects will be visible *only* to Admin users.
     # db.session.delete(obj.context)
-
-
-# Removed because this is now handled purely client-side, but kept
-# here as a reference for the next one.
-# @BaseObjectView.extension_contributions.connect_via(Program)
-def contribute_to_program_view(sender, obj=None, context=None):
-  if obj.context_id is not None and \
-     rbac_permissions.is_allowed_read('Role', None, 1) and \
-     rbac_permissions.is_allowed_read('UserRole', None, obj.context_id) and \
-     rbac_permissions.is_allowed_create('UserRole', None, obj.context_id) and \
-     rbac_permissions.is_allowed_update('UserRole', None, obj.context_id) and \
-     rbac_permissions.is_allowed_delete('UserRole', None, obj.context_id):
-    return 'permissions/programs/_role_assignments.haml'
-  return None
 
 
 @app.context_processor

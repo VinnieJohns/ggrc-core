@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -21,8 +21,8 @@
     //make buttons non-clickable when saving
     bindXHRToButton : function(xhr, el, newtext, disable) {
       // binding of an ajax to a click is something we do manually
-      var $el = $(el)
-      , oldtext = $el.text();
+      var $el = $(el);
+      var oldtext = $el[0] ? $el[0].innerHTML : '';
 
       if(newtext) {
         $el[0].innerHTML = newtext;

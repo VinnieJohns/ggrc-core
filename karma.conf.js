@@ -1,6 +1,6 @@
 
 // Karma Configuration
-// Copyright (C) 2016 Google Inc.
+// Copyright (C) 2017 Google Inc.
 // Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 module.exports = function (config) {
@@ -56,23 +56,13 @@ module.exports = function (config) {
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: [/* 'PhantomJS' */],
-
-    customLaunchers: {
-      Chrome_travis_ci: {
-        base: 'Chrome',
-        flags: ['--no-sandbox']
-      }
-    },
+    browsers: ['PhantomJS'],
+    concurrency: 1,
 
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
     singleRun: false
   };
-
-  if (process.env.TRAVIS) {
-    configuration.browsers = ['Chrome_travis_ci'];
-  }
 
   config.set(configuration);
 };

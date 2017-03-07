@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 scope = "System"
@@ -110,14 +110,7 @@ owner_base = [
     "ObjectDocument",
     "ObjectOwner",
     "ObjectPerson",
-    {
-        "type": "Option",
-        "terms": {
-            "list_property": "owners",
-            "value": "$current_user"
-        },
-        "condition": "contains"
-    },
+    "Option",
     {
         "type": "OrgGroup",
         "terms": {

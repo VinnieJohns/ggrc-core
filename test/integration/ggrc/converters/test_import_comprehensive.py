@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Comprehensive import tests.
 
@@ -12,7 +12,7 @@ from ggrc.models import Program
 from ggrc.converters import errors
 from ggrc_basic_permissions import Role
 from ggrc_basic_permissions import UserRole
-from integration.ggrc.converters import TestCase
+from integration.ggrc import TestCase
 from integration.ggrc.generator import ObjectGenerator
 
 
@@ -25,7 +25,7 @@ class TestComprehensiveSheets(TestCase):
   """
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestComprehensiveSheets, self).setUp()
     self.generator = ObjectGenerator()
     self.client.get("/login")
 
@@ -58,13 +58,6 @@ class TestComprehensiveSheets(TestCase):
             "row_warnings": 4,
             "rows": 16,
         },
-        "Issue": {
-            "created": 10,
-            "ignored": 4,
-            "row_errors": 4,
-            "row_warnings": 4,
-            "rows": 14,
-        },
         "Policy": {
             "created": 13,
             "ignored": 3,
@@ -83,7 +76,7 @@ class TestComprehensiveSheets(TestCase):
             "created": 14,
             "ignored": 2,
             "row_errors": 3,
-            "row_warnings": 5,
+            "row_warnings": 4,
             "rows": 16,
         },
         "Contract": {
@@ -188,7 +181,7 @@ class TestComprehensiveSheets(TestCase):
     self.assertEqual(prog.description, "test")
 
     custom_vals = [v.attribute_value for v in prog.custom_attribute_values]
-    expected_custom_vals = ['0', 'a', '2015-12-12 00:00:00', 'test1']
+    expected_custom_vals = ['0', 'a', '2015-12-12', 'test1']
     self.assertEqual(set(custom_vals), set(expected_custom_vals))
 
   def test_full_good_import(self):
@@ -209,7 +202,7 @@ class TestComprehensiveSheets(TestCase):
     self.assertEqual(len(access_groups), 10)
 
     expected_errors = {}
-    self._check_response(response, expected_errors)
+    self._check_csv_response(response, expected_errors)
 
   def test_errors_and_warnings(self):
     """Test all possible errors and warnings.
@@ -220,27 +213,80 @@ class TestComprehensiveSheets(TestCase):
     response = self.import_file("import_with_all_warnings_and_errors.csv")
     expected_errors = {
         "Control": {
-            "block_errors": set([
+            "block_errors": {
                 errors.DUPLICATE_COLUMN.format(
-                    line=1, duplicates="Notes, Test Plan"),
-            ]),
+                    line=1, duplicates="title, notes, test plan"),
+            },
         },
         "Program": {
-            "row_warnings": set([
+            "row_warnings": {
                 errors.OWNER_MISSING.format(line=7, column_name="Manager"),
-            ]),
-            "row_errors": set([
+            },
+            "row_errors": {
                 errors.UNKNOWN_DATE_FORMAT.format(
                     line=8, column_name="Effective Date"),
                 errors.WRONG_VALUE_ERROR.format(
                     line=9, column_name="Effective Date"),
                 errors.WRONG_VALUE_ERROR.format(
                     line=9, column_name="Stop Date"),
-            ]),
+            },
         },
+        "Assessment": {
+            "row_warnings": {
+                errors.UNKNOWN_OBJECT.format(
+                    line=14, object_type="Audit", slug="x"),
+            },
+            "row_errors": {
+                errors.MISSING_VALUE_ERROR.format(
+                    line=14, column_name="Audit"),
+                errors.MISSING_VALUE_ERROR.format(
+                    line=15, column_name="Audit"),
+            },
+        }
     }
 
-    self._check_response(response, expected_errors)
+    self._check_csv_response(response, expected_errors)
+
+  def test_multi_choice_fields(self):
+    """Test Multi-choice fields options
+
+     This test should test for warnings and errors when multi-choice options
+     are not present in CSV
+     """
+
+    response = self.import_file("import_controls_invalid_values.csv")
+    expected_errors = {
+        "Control": {
+            "row_warnings": set([
+                errors.WRONG_VALUE.format(
+                    line=5, column_name="Frequency"),
+                errors.WRONG_VALUE.format(
+                    line=5, column_name="Kind/Nature"),
+                errors.WRONG_VALUE.format(
+                    line=5, column_name="Type/Means")
+            ])
+        }
+    }
+
+    self._check_csv_response(response, expected_errors)
+
+  def test_directive_kind_fields(self):
+    """Test Multi-choice fields for directives
+
+     This test should test for warnings and errors when multi-choice
+     directives are not present in CSV
+     """
+
+    response = self.import_file("import_invalid_directive_values.csv")
+    expected_errors = {
+        "Policy": {
+            "row_warnings": set([
+                errors.WRONG_VALUE.format(
+                    line=7, column_name="Kind/Type")
+            ])
+        }
+    }
+    self._check_csv_response(response, expected_errors)
 
   def create_custom_attributes(self):
     """Generate custom attributes needed for comprehensive sheet."""
@@ -258,7 +304,7 @@ class TestComprehensiveSheets(TestCase):
     response = self.import_file("case_sensitive_slugs.csv")
     expected_errors = {
         "Control": {
-            "row_errors": [
+            "row_errors": {
                 errors.DUPLICATE_VALUE_IN_CSV.format(
                     line_list="3, 4",
                     column_name="Code",
@@ -273,7 +319,59 @@ class TestComprehensiveSheets(TestCase):
                     value="a",
                     ignore_lines="4",
                 ),
-            ]
+            }
         }
     }
-    self._check_response(response, expected_errors)
+    self._check_csv_response(response, expected_errors)
+
+  def test_task_groups_tasks(self):
+    """Test task group task warnings and errors.
+
+    These tests are taken from manual test grid:
+    https://docs.google.com/spreadsheets/d/1sfNXxw_kmiw1r-\
+      Qfzv1jUM48mpeZNjIAnLdSxiCQSsI/edit?pli=1#gid=627526582
+
+    The import file had an additional users block that contains missing users.
+    """
+    response = self.import_file(
+        "importing_task_group_task_warnings_and_errors.csv")
+
+    expected_errors = {
+        "Task Group Task": {
+            "row_errors": {
+                errors.MISSING_VALUE_ERROR.format(
+                    line="5",
+                    column_name="End",
+                ),
+                errors.MISSING_VALUE_ERROR.format(
+                    line="4",
+                    column_name="Start",
+                ),
+                errors.WRONG_VALUE_ERROR.format(
+                    line="6",
+                    column_name="Start",
+                ),
+                errors.WRONG_VALUE_ERROR.format(
+                    line="7",
+                    column_name="End",
+                ),
+            },
+        },
+    }
+    self._check_csv_response(response, expected_errors)
+
+  def test_missing_rich_text_field(self):
+    """MISSING_VALUE_ERROR is returned on empty mandatory description."""
+    response = self.import_file("risk_missing_mandatory_description.csv")
+
+    expected_errors = {
+        "Risk": {
+            "row_errors": {
+                errors.MISSING_VALUE_ERROR.format(
+                    line="3",
+                    column_name="Description",
+                ),
+            },
+        },
+    }
+    self._check_csv_response(response, expected_errors)

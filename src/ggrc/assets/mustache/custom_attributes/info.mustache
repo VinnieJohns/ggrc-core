@@ -1,130 +1,44 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
-<custom-attributes instance="instance" load="true">
-  {{^loading}}
+<custom-attributes instance="instance">
     {{#if instance.custom_attribute_definitions.length}}
-      {{#iterate_by_two instance.custom_attribute_definitions}}
-        <div class="row-fluid wrap-row">
-        {{#list}}
-          <div class="span6">
-            <div data-custom-attribute="{{id}}" data-type="{{attribute_type}}">
-              {{#with_value_for_id id}}
-                {{#switch attribute_type}}
-                {{#case 'Checkbox'}}
-                  <inline-edit
-                    instance="instance"
-                    need-confirm="confirmEdit"
-                    ca-id="id"
-                    value="value"
-                    label="title"
-                    type="checkbox"Since slugs are now case insensitive, the errors show all slugs in lower
-case and the tests need to be updated accordingly.
-commit 623c05117551ac3c7caccc353a6455c2a4e16f76
-                    mandatory="mandatory"
-                    placeholder="placeholder"
-                    helptext="helptext"
-                    {{^is_allowed 'update' instance context='for'}}
-                      readonly
-                    {{/is_allowed}}
-                  ></inline-edit>
-                {{/case}}
-                {{#case 'Rich Text'}}
-                  <inline-edit
-                    instance="instance"
-                    need-confirm="confirmEdit"
-                    ca-id="id"
-                    value="value"
-                    label="title"
-                    type="text"
-                    mandatory="mandatory"
-                    placeholder="placeholder"
-                    helptext="helptext"
-                    {{^is_allowed 'update' instance context='for'}}
-                      readonly
-                    {{/is_allowed}}
-                  ></inline-edit>
-                {{/case}}
-                {{#case 'Dropdown'}}
-                  <inline-edit
-                    instance="instance"
-                    need-confirm="confirmEdit"
-                    ca-id="id"
-                    value="value"
-                    label="title"
-                    type="dropdown"
-                    mandatory="mandatory"
-                    values="multi_choice_options"
-                    placeholder="placeholder"
-                    helptext="helptext"
-                    {{^is_allowed 'update' instance context='for'}}
-                      readonly
-                    {{/is_allowed}}
-                  ></inline-edit>
-                {{/case}}
-                {{#case 'Date'}}
-                  <inline-edit
-                    instance="instance"
-                    need-confirm="confirmEdit"
-                    ca-id="id"
-                    value="value"
-                    label="title"
-                    type="date"
-                    mandatory="mandatory"
-                    placeholder="placeholder"
-                    helptext="helptext"
-                    {{^is_allowed 'update' instance context='for'}}
-                      readonly
-                    {{/is_allowed}}
-                  ></inline-edit>
-                {{/case}}
-                {{#case 'Text'}}
-                  <inline-edit
-                    instance="instance"
-                    need-confirm="confirmEdit"
-                    ca-id="id"
-                    value="value"
-                    label="title"
-                    type="input"
-                    mandatory="mandatory"
-                    placeholder="placeholder"
-                    helptext="helptext"
-                    {{^is_allowed 'update' instance context='for'}}
-                      readonly
-                    {{/is_allowed}}
-                  ></inline-edit>
-                {{/case}}
-                {{#case 'Map:Person'}}
-                  {{#with_object_for_id id}}
-                    <inline-edit
-                      instance="instance"
-                      need-confirm="confirmEdit"
-                      ca-id="id"
-                      value="object"
-                      label="title"
-                      type="person"
-                      mandatory="mandatory"
-                      placeholder="placeholder"
-                      helptext="helptext"
-                      {{^is_allowed 'update' instance context='for'}}
-                        readonly
-                      {{/is_allowed}}
-                    ></inline-edit>
-                  {{/with_object_for_id}}
-                {{/case}}
-                {{#default}}
-                  <h6>{{title}}</h6>
-                  {{value}}
-                {{/default}}
-                {{/switch}}
-              {{/with_value_for_id}}
-            </div>
+      {{#iterate_by_two items}}
+      <div class="row-fluid wrap-row">
+      {{#list}}
+        <div class="span6">
+          <div data-custom-attribute="{{id}}" data-type="{{attribute_type}}">
+            <inline-edit
+              instance="instance"
+              ca-id="cad.id"
+              {{#if cav.attribute_object}}
+              value="cav.attribute_object"
+              {{else}}
+              value="cav.attribute_value"
+              {{/if}}
+              values="cad.multi_choice_options"
+              title-text="cad.title"
+              label="cad.label"
+              type="{{type}}"
+              mandatory="cad.mandatory"
+              placeholder="cad.placeholder"
+              helptext="cad.helptext"
+              {{#if_helpers '\
+                #if' instance.snapshot '\
+                or #if' instance.isRevision }}
+                readonly="true"
+              {{else}}
+                {{^is_allowed 'update' instance context='for'}}
+                  readonly="true"
+                {{/is_allowed}}
+              {{/if_helpers}}
+            ></inline-edit>
           </div>
-        {{/list}}
         </div>
+      {{/list}}
+      </div>
       {{/iterate_by_two}}
     {{/if}}
-  {{/loading}}
 </custom-attributes>

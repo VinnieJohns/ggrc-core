@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -17,7 +17,7 @@ class TestReader(TestCase):
   """ Test reader role """
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestReader, self).setUp()
     self.generator = Generator()
     self.api = Api()
     self.object_generator = ObjectGenerator()
@@ -48,7 +48,6 @@ class TestReader(TestCase):
         "Policy", "Regulation", "Standard", "Document", "Facility",
         "Market", "Objective", "OrgGroup", "Vendor", "Product",
         "Clause", "System", "Process", "Issue", "Project", "AccessGroup",
-        "Request"
     ])
     for model_singular in base_models:
       try:
@@ -128,7 +127,7 @@ class TestReader(TestCase):
     return response.json["results"]["counts"].get(obj)
 
   def test_reader_should_see_users(self):
-    """ Test if creater can see all the users in the system """
+    """ Test if creator can see all the users in the system """
     self.api.set_user(self.users['admin'])
     admin_count = self._get_count("Person")
     self.api.set_user(self.users['reader'])

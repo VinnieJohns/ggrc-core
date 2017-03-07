@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from datetime import date
@@ -23,7 +23,7 @@ class TestOneTimeWfEndDateChange(TestCase):
   """
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestOneTimeWfEndDateChange, self).setUp()
     self.api = Api()
     self.wf_generator = WorkflowsGenerator()
     self.object_generator = ObjectGenerator()

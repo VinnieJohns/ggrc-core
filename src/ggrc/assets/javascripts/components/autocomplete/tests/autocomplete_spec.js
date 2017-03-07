@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -20,7 +20,7 @@ describe('GGRC.Components.autocomplete', function () {
     });
 
     it('sets the automappingOff flag to true', function () {
-      expect(scope.automappingOff).toBe(true);
+      expect(scope().automappingOff).toBe(true);
     });
   });
 

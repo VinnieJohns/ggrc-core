@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test cases which cover backlog workflow functionality"""
@@ -25,7 +25,7 @@ class TestBacklogWorkflow(TestCase):
   """Test cases for backlog workflow"""
 
   def setUp(self):  # noqa
-    TestCase.setUp(self)
+    super(TestBacklogWorkflow, self).setUp()
     self.api = Api()
     self.generator = WorkflowsGenerator()
     self.object_generator = ObjectGenerator()

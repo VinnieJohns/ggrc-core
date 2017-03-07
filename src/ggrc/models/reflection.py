@@ -1,12 +1,12 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
-"""Utilties to deal with introspecting gGRC models for publishing, creation,
+"""Utilties to deal with introspecting GGRC models for publishing, creation,
 and update from resource format representations, such as JSON."""
 
 from sqlalchemy.sql.schema import UniqueConstraint
 
-from ggrc.utils import get_mapping_rules
+from ggrc.utils import get_mapping_rules, get_unmapping_rules
 from ggrc.utils import title_from_camelcase
 from ggrc.utils import underscore_from_camelcase
 
@@ -15,8 +15,6 @@ ATTRIBUTE_ORDER = (
     "slug",
     "assessment_template",
     "audit",
-    "assessment_object",
-    "request_audit",
     "control",
     "program",
     "task_group",
@@ -26,16 +24,13 @@ ATTRIBUTE_ORDER = (
     "notes",
     "test_plan",
     "owners",
-    "request_type",
     "related_assessors",
     "related_creators",
-    "related_requesters",
     "related_assignees",
     "related_verifiers",
     "program_owner",
     "program_editor",
     "program_reader",
-    "program_mapped",
     "workflow_owner",
     "workflow_member",
     "task_type",
@@ -49,6 +44,7 @@ ATTRIBUTE_ORDER = (
     "finished_date",
     "verified_date",
     "status",
+    'os_state',
     "assertions",
     "categories",
     "contact",
@@ -72,9 +68,10 @@ ATTRIBUTE_ORDER = (
     "is_enabled",
     "company",
     "user_role",
-    "test",
     "recipients",
     "send_by_default",
+    "document_url",
+    "document_evidence",
     "delete",
 )
 
@@ -87,9 +84,24 @@ EXCLUDE_MAPPINGS = set([
 ])
 
 
-class DontPropagate(object):
+def is_filter_only(alias_properties):
+  """Determine if alias is for filter use only.
 
-  """Attributes wrapped by ``DontPropagate`` instances should not be considered
+  Prevents alias filters from being exportable.
+
+  Args:
+    alias_properties: Alias properties.
+  Returns:
+    Boolean reflecting if it's filter only or not.
+  """
+  if isinstance(alias_properties, dict):
+    if alias_properties.get("filter_only"):
+      return True
+  return False
+
+
+class PublishOnly(object):
+  """Attributes wrapped by ``PublishOnly`` instances should not be considered
   to be a part of an inherited list. For example, ``_update_attrs`` can be
   inherited from ``_publish_attrs`` if left unspecified. This class provides
   a mechanism to use that inheritance while excluding some elements from the
@@ -99,7 +111,7 @@ class DontPropagate(object):
 
     _publish_attrs = [
       'inherited_attr',
-      DontPropagate('not_inherited_attr'),
+      PublishOnly('not_inherited_attr'),
       ]
 
   is equivalent to this:
@@ -114,16 +126,10 @@ class DontPropagate(object):
     'inherited_attr',
     ]
   """
+  # pylint: disable=too-few-public-methods
 
   def __init__(self, attr_name):
     self.attr_name = attr_name
-
-
-class PublishOnly(DontPropagate):
-
-  """Alias of ``DontPropagate`` for use in a ``_publish_attrs`` specification.
-  """
-  pass
 
 
 class AttributeInfo(object):
@@ -136,8 +142,13 @@ class AttributeInfo(object):
   MAPPING_PREFIX = "__mapping__:"
   UNMAPPING_PREFIX = "__unmapping__:"
   CUSTOM_ATTR_PREFIX = "__custom__:"
+  OBJECT_CUSTOM_ATTR_PREFIX = "__object_custom__:"
+  SNAPSHOT_MAPPING_PREFIX = "__snapshot_mapping__:"
 
   class Type(object):
+    """Types of model attributes."""
+    # TODO: change to enum.
+    # pylint: disable=too-few-public-methods
     PROPERTY = "property"
     MAPPING = "mapping"
     SPECIAL_MAPPING = "special_mapping"
@@ -147,19 +158,10 @@ class AttributeInfo(object):
 
   def __init__(self, tgt_class):
     self._publish_attrs = AttributeInfo.gather_publish_attrs(tgt_class)
-    self._stub_attrs = AttributeInfo.gather_stub_attrs(tgt_class)
     self._update_attrs = AttributeInfo.gather_update_attrs(tgt_class)
     self._create_attrs = AttributeInfo.gather_create_attrs(tgt_class)
     self._include_links = AttributeInfo.gather_include_links(tgt_class)
     self._aliases = AttributeInfo.gather_aliases(tgt_class)
-
-  @classmethod
-  def iter_bases_attrs(cls, tgt_class, src_attrs):
-    src_attrs = src_attrs if type(src_attrs) is list else [src_attrs]
-    for base in tgt_class.mro():
-      for attr in src_attrs:
-        if attr in tgt_class.__dict__:
-          yield getattr(tgt_class, attr, None)
 
   @classmethod
   def gather_attr_dicts(cls, tgt_class, src_attr):
@@ -184,9 +186,9 @@ class AttributeInfo(object):
     """
     if main_class is None:
       main_class = tgt_class
-    src_attrs = src_attrs if type(src_attrs) is list else [src_attrs]
+    src_attrs = src_attrs if isinstance(src_attrs, list) else [src_attrs]
     accumulator = accumulator if accumulator is not None else set()
-    ignore_dontpropagate = True
+    ignore_publishonly = True
     for attr in src_attrs:
       attrs = None
       # Only get the attribute if it is defined on the target class, but
@@ -196,15 +198,15 @@ class AttributeInfo(object):
         if callable(attrs):
           attrs = attrs(main_class)
       if attrs is not None:
-        if not ignore_dontpropagate:
-          attrs = [a for a in attrs if not isinstance(a, DontPropagate)]
+        if not ignore_publishonly:
+          attrs = [a for a in attrs if not isinstance(a, PublishOnly)]
         else:
-          attrs = [a if not isinstance(a, DontPropagate) else a.attr_name for
+          attrs = [a if not isinstance(a, PublishOnly) else a.attr_name for
                    a in attrs]
         accumulator.update(attrs)
         break
       else:
-        ignore_dontpropagate = False
+        ignore_publishonly = False
     for base in tgt_class.__bases__:
       cls.gather_attrs(base, src_attrs, accumulator, main_class=main_class)
     return accumulator
@@ -216,10 +218,6 @@ class AttributeInfo(object):
   @classmethod
   def gather_aliases(cls, tgt_class):
     return cls.gather_attr_dicts(tgt_class, '_aliases')
-
-  @classmethod
-  def gather_stub_attrs(cls, tgt_class):
-    return cls.gather_attrs(tgt_class, '_stub_attrs')
 
   @classmethod
   def gather_update_attrs(cls, tgt_class):
@@ -236,39 +234,63 @@ class AttributeInfo(object):
     return cls.gather_attrs(tgt_class, ['_include_links'])
 
   @classmethod
-  def get_mapping_definitions(cls, object_class):
-    """ Get column definitions for allowed mappings for object_class """
+  def _generate_mapping_definition(cls, rules, prefix, display_name_tmpl):
+    "Generate definition from template"
     definitions = {}
-    mapping_rules = get_mapping_rules()
-    object_mapping_rules = mapping_rules.get(object_class.__name__, [])
-
-    for mapping_class in object_mapping_rules:
-      class_name = title_from_camelcase(mapping_class)
-      mapping_name = "{}{}".format(cls.MAPPING_PREFIX, class_name)
-      definitions[mapping_name.lower()] = {
-          "display_name": "map:{}".format(class_name),
-          "attr_name": mapping_class.lower(),
+    from ggrc.snapshotter.rules import Types
+    read_only = Types.parents | Types.scoped
+    read_only_text = "Read only column and will be ignored on import."
+    for klass in rules:
+      klass_name = title_from_camelcase(klass)
+      key = "{}{}".format(prefix, klass_name)
+      definitions[key.lower()] = {
+          "display_name": display_name_tmpl.format(klass_name),
+          "attr_name": klass.lower(),
           "mandatory": False,
           "unique": False,
-          "description": "",
+          "description": read_only_text if klass in read_only else "",
           "type": cls.Type.MAPPING,
       }
-
-      unmapping_name = "{}{}".format(cls.UNMAPPING_PREFIX, class_name)
-      definitions[unmapping_name.lower()] = {
-          "display_name": "unmap:{}".format(class_name),
-          "attr_name": mapping_class.lower(),
-          "mandatory": False,
-          "unique": False,
-          "description": "",
-          "type": cls.Type.MAPPING,
-      }
-
     return definitions
 
   @classmethod
-  def get_custom_attr_definitions(cls, object_class, ca_cache=None):
-    """ Get column definitions for custom attributes on object_class """
+  def get_mapping_definitions(cls, object_class):
+    """ Get column definitions for allowed mappings for object_class """
+    from ggrc.snapshotter import rules
+    if object_class.__name__ in rules.Types.scoped:
+      return cls._generate_mapping_definition(
+          rules.Types.all, cls.SNAPSHOT_MAPPING_PREFIX, "map:{}",
+      )
+    definitions = {}
+    mapping_rules = get_mapping_rules()
+    object_mapping_rules = mapping_rules.get(object_class.__name__, [])
+    definitions.update(cls._generate_mapping_definition(
+        object_mapping_rules, cls.MAPPING_PREFIX, "map:{}",
+    ))
+
+    unmapping_rules = get_unmapping_rules()
+    object_unmapping_rules = unmapping_rules.get(object_class.__name__, [])
+    definitions.update(cls._generate_mapping_definition(
+        object_unmapping_rules, cls.UNMAPPING_PREFIX, "unmap:{}",
+    ))
+    return definitions
+
+  @classmethod
+  def get_custom_attr_definitions(cls, object_class, ca_cache=None,
+                                  include_oca=True):
+    """Get column definitions for custom attributes on object_class.
+
+    Args:
+      object_class: Model for which we want the attribute definitions.
+      ca_cache: dictionary containing custom attribute definitions. If it's set
+        this function will not look for CAD in the database. This should be
+        used for bulk operations, and eventually replaced with memcache.
+      include_oca: Flag for including object level custom attributes. This
+        should be true only for defenitions needed for csv imports.
+
+    returns:
+      dict of custom attribute definitions.
+    """
     definitions = {}
     if not hasattr(object_class, "get_custom_attribute_definitions"):
       return definitions
@@ -278,19 +300,33 @@ class AttributeInfo(object):
     else:
       custom_attributes = object_class.get_custom_attribute_definitions()
     for attr in custom_attributes:
+      description = attr.helptext or u""
+      if (attr.attribute_type == attr.ValidTypes.DROPDOWN and
+              attr.multi_choice_options):
+        if description:
+          description += "\n\n"
+        description += u"Accepted values are:\n{}".format(
+            attr.multi_choice_options.replace(",", "\n")
+        )
       if attr.definition_id:
         ca_type = cls.Type.OBJECT_CUSTOM
+        attr_name = u"{}{}".format(
+            cls.OBJECT_CUSTOM_ATTR_PREFIX, attr.title).lower()
       else:
         ca_type = cls.Type.CUSTOM
-      attr_name = "{}{}".format(cls.CUSTOM_ATTR_PREFIX, attr.title)
+        attr_name = u"{}{}".format(cls.CUSTOM_ATTR_PREFIX, attr.title).lower()
+
+      definition_ids = definitions.get(attr_name, {}).get("definition_ids", [])
+      definition_ids.append(attr.id)
 
       definitions[attr_name] = {
           "display_name": attr.title,
           "attr_name": attr.title,
           "mandatory": attr.mandatory,
           "unique": False,
-          "description": "",
+          "description": description,
           "type": ca_type,
+          "definition_ids": definition_ids,
       }
     return definitions
 
@@ -298,25 +334,34 @@ class AttributeInfo(object):
   def get_unique_constraints(cls, object_class):
     """ Return a set of attribute names for single unique columns """
     constraints = object_class.__table__.constraints
-    unique = filter(lambda x: isinstance(x, UniqueConstraint), constraints)
+    unique = [con for con in constraints if isinstance(con, UniqueConstraint)]
     # we only handle single column unique constraints
     unique_columns = [u.columns.keys() for u in unique if len(u.columns) == 1]
     return set(sum(unique_columns, []))
 
   @classmethod
-  def get_object_attr_definitions(cls, object_class, ca_cache=None):
-    """ get all column definitions for object_class
+  def get_object_attr_definitions(cls, object_class, ca_cache=None,
+                                  include_oca=True):
+    """Get all column definitions for object_class.
 
-    This function joins custm attribute definitions, mapping definitions and
+    This function joins custom attribute definitions, mapping definitions and
     the extra delete column.
+
+    Args:
+      object_class: Model for which we want the attribute definitions.
+      ca_cache: dictionary containing custom attribute definitions.
+      include_oca: Flag for including object level custom attributes.
     """
     definitions = {}
 
     aliases = AttributeInfo.gather_aliases(object_class)
-    filtered_aliases = [(k, v) for k, v in aliases.items() if v is not None]
+    filtered_aliases = [
+        (attr, props) for attr, props in aliases.items()
+        if props is not None and not is_filter_only(props)
+    ]
 
     # push the extra delete column at the end to override any custom behavior
-    if hasattr(object_class, "slug") or hasattr(object_class, "email"):
+    if hasattr(object_class, "slug"):
       filtered_aliases.append(("delete", {
           "display_name": "Delete",
           "description": "",
@@ -335,13 +380,14 @@ class AttributeInfo(object):
           "type": cls.Type.PROPERTY,
           "handler_key": key,
       }
-      if type(value) is dict:
+      if isinstance(value, dict):
         definition.update(value)
       definitions[key] = definition
 
     if object_class.__name__ not in EXCLUDE_CUSTOM_ATTRIBUTES:
       definitions.update(
-          cls.get_custom_attr_definitions(object_class, ca_cache=ca_cache))
+          cls.get_custom_attr_definitions(object_class, ca_cache=ca_cache,
+                                          include_oca=include_oca))
 
     if object_class.__name__ not in EXCLUDE_MAPPINGS:
       definitions.update(cls.get_mapping_definitions(object_class))

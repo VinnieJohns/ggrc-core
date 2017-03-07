@@ -1,9 +1,9 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-(function ($) {
+(function ($, Permission) {
   'use strict';
 
   function preload_content() {
@@ -211,6 +211,7 @@
     'form': function ($target, $trigger, option) {
       var form_target = $trigger.data('form-target')
       , object_params = $trigger.attr('data-object-params')
+      , triggerParent = $trigger.closest('.add-button')
       , model = CMS.Models[$trigger.attr('data-object-singular')] || CMS.ModelHelpers[$trigger.attr('data-object-singular')]
       , mapping = $trigger.data('mapping')
       , instance;
@@ -254,6 +255,12 @@
       });
 
       $target.on('modal:success', function (e, data, xhr) {
+        var WARN_MSG = [
+          'The $trigger element was not found in the DOM, thus some',
+          'application events will not be propagated.'
+        ].join(' ');
+        var args = arguments;
+
         if (form_target == 'refresh') {
           refresh_page();
         } else if (form_target == 'redirect') {
@@ -280,8 +287,47 @@
             $active.closest('.active').removeClass('active');
             $active.click();
           }
+
+          // For some reason it can happen that the original $trigger element
+          // is removed from the DOM and replaced with another identical
+          // element. We thus need to trigger the event on that new element
+          // (present in the DOM) if we want event handlers to be invoked.
+          if (!document.contains($trigger[0])) {
+            $trigger = $('[data-link-purpose="open-edit-modal"]');
+            if (_.isEmpty($trigger)) {
+              console.warn(WARN_MSG);
+              return;
+            }
+          }
+
           $trigger.trigger('routeparam', $trigger.data('route'));
-          $trigger.trigger('modal:success', Array.prototype.slice.call(arguments, 1));
+
+          if (triggerParent && triggerParent.length) {
+            $trigger = triggerParent;
+          }
+
+          Permission.refresh().then(function () {
+            var hiddenElement;
+            var tagName;
+
+            // 'is_allowed' helper rerenders an elements
+            // we should trigger event for hidden element
+            if (!$trigger.is(':visible') && option.uniqueId &&
+              $trigger.context) {
+              tagName = $trigger.context.tagName;
+
+              hiddenElement =
+                $(tagName + "[data-unique-id='" + option.uniqueId + "']");
+
+              if (hiddenElement) {
+                $trigger = hiddenElement;
+              }
+            }
+
+            $trigger.trigger(
+              'modal:success', Array.prototype.slice.call(args, 1)
+            );
+          });
         }
       });
     },
@@ -391,7 +437,10 @@
           return $.inArray('preventdoublesubmit', this.namespace.split('.')) > -1;
         }).length < 1) {
       $el.on('keypress.preventdoublesubmit', function (ev) {
-        if (ev.which === 13 && !$(document.activeElement).hasClass('wysihtml5')) {
+
+        if (ev.which === 13 &&
+          !$(document.activeElement).hasClass('wysihtml5') &&
+          !$(document.activeElement).parents('.pagination').length) {
           ev.preventDefault();
           if (ev.originalEvent) {
             ev.originalEvent.preventDefault();
@@ -480,11 +529,14 @@
         'click.modal-ajax.data-api keydown.modal-ajax.data-api',
         toggle ? '[data-toggle=modal-ajax-' + toggle + ']' : '[data-toggle=modal-ajax]',
         function (e) {
-
-          var $this = $(this)
-          , toggle_type = $(this).data('toggle')
-          , modal_id, target, $target, option, href, new_target, modal_type;
-
+          var $this = $(this);
+          var loadHref;
+          var modalId;
+          var target;
+          var $target;
+          var option;
+          var href;
+          var newTarget;
 
           if ($this.hasClass('disabled')) {
             return;
@@ -494,31 +546,39 @@
           }
 
           href = $this.attr('data-href') || $this.attr('href');
-          modal_id = 'ajax-modal-' + href.replace(/[\/\?=\&#%]/g, '-').replace(/^-/, '');
-          target = $this.attr('data-target') || $('#' + modal_id);
+          loadHref = !$this.data().noHrefLoad;
+
+          modalId = 'ajax-modal-' +
+                     href.replace(/[\/\?=\&#%]/g, '-').replace(/^-/, '');
+          target = $this.attr('data-target') || $('#' + modalId);
 
           $target = $(target);
-          new_target = $target.length === 0;
+          newTarget = $target.length === 0;
 
-          if (new_target) {
-            $target = $('<div id="' + modal_id + '" class="modal hide"></div>');
+          if (newTarget) {
+            $target = $('<div id="' + modalId + '" class="modal hide"></div>');
             $target.addClass($this.attr('data-modal-class'));
-            $this.attr('data-target', '#' + modal_id);
+            $this.attr('data-target', '#' + modalId);
           }
 
           $target.on('hidden', function (ev) {
-            if (ev.target === ev.currentTarget)
+            if (ev.target === ev.currentTarget) {
               $target.remove();
+            }
           });
 
-          if (new_target || $this.data('modal-reset') === 'reset') {
+          if (newTarget || $this.data('modal-reset') === 'reset') {
             $target.html(preload_content());
-            if ($this.prop('protocol') === window.location.protocol) {
+            if (
+              $this.prop('protocol') === window.location.protocol &&
+              loadHref
+            ) {
               $target.load(href, emit_loaded);
             }
           }
 
-          option = $target.data('modal-help') ? 'toggle' : $.extend({}, $target.data(), $this.data());
+          option = $target.data('modal-help') ?
+                   'toggle' : $.extend({}, $target.data(), $this.data());
 
           launch_fn.apply($target, [$target, $this, option]);
         });
@@ -540,4 +600,4 @@
       }
     );
   });
-})(window.jQuery);
+})(window.jQuery, window.Permission);

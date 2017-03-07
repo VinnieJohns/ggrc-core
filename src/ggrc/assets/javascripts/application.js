@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -16,9 +16,6 @@
     GGRC.current_url_compute(window.location);
   });
   $.migrateMute = true; // turn off console warnings for jQuery-migrate
-
-  // Init ZeroConfig
-  ZeroClipboard.config({swfPath: '/static/flash/ZeroClipboard.swf'});
 
   function ModelError(message, data) {
     this.name = "ModelError";

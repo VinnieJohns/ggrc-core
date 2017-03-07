@@ -1,10 +1,9 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Modals for deleting objects"""
 
 from lib import base
-from lib import decorator
 from lib.constants import locator
 
 
@@ -25,7 +24,6 @@ class DeleteObjectModal(base.Modal):
     self.button_delete = base.Button(
         driver, self._locator.BUTTON_DELETE)
 
-  @decorator.wait_for_redirect
   def confirm_delete(self):
     """
     Returns:

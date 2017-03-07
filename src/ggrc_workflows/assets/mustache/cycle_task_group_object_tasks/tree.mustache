@@ -1,5 +1,5 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
@@ -27,35 +27,7 @@
                     <div class="span{{display_options.selectable_attr_width}}">
                       <div class="owner tree-title-area">
                         {{#instance}}
-                          {{#switch attr_name}}
-                            {{#case 'workflow'}}
-                              {{#using cycle=instance.cycle}}
-                                {{#using workflow=cycle.workflow}}
-                                    <div class="tree-title-area">
-                                      <span class="tiny-data" rel="tooltip" title="Workflow title">
-                                        {{workflow.title}}
-                                      </span>
-                                    </div>
-                                {{/using}}
-                              {{/using}}
-                            {{/case}}
-                            {{#case 'assignee'}}
-                              {{#using contact=instance.contact}}
-                                <div>{{firstnonempty contact.name contact.email ''}}</div>
-                              {{/using}}
-                            {{/case}}
-                            {{#default}}
-                              {{#if_helpers '\
-                                #if_equals' attr_name 'url' '\
-                                or #if_equals' attr_name 'reference_url'}}
-                                  <a class="url" href="{{get_url_value attr_name instance}}" target="_blank">
-                                    {{get_default_attr_value attr_name instance}}
-                                  </a>
-                              {{else}}
-                                {{get_default_attr_value attr_name instance}}
-                              {{/if_helpers}}
-                            {{/default}}
-                          {{/switch}}
+                          {{> '/static/mustache/cycle_task_group_object_tasks/tree-item-attr.mustache'}}
                         {{/instance}}
                       </div>
                     </div>
@@ -69,7 +41,7 @@
                 <li>
                   <div class="date">
                     <span rel="tooltip" data-placement="top" {{#is_overdue instance.end_date instance.status}}class="error"{{/is_overdue}} data-original-title="Due On">
-                      <i class="fa fa-clock-o {{#is_overdue instance.end_date instance.status}}red{{else}}color{{/is_overdue}}"></i> {{localize_date instance.end_date}}
+                      <i class="fa fa-clock-o {{#is_overdue instance.end_date instance.status}}red{{else}}color{{/is_overdue}}"></i> {{localize_date_today instance.end_date}}
                     </span>
                   </div>
                 </li>

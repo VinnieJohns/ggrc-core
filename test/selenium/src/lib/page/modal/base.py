@@ -1,20 +1,26 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+"""Module for modal base classes."""
+# pylint: disable=too-few-public-methods
+
+from selenium.webdriver.common.by import By
 
 from lib import base
 from lib.constants import locator
+from lib.utils import selenium_utils
 
 
 class BaseModal(base.Modal):
-  """Base class for the edit modal"""
+  """Base class for the edit modal."""
   _locator_ui_title = locator.ModalCreateNewObject.UI_TITLE
+  _locator_ui_code = locator.ModalCreateNewObject.UI_CODE
   locator_button_save = locator.ModalCreateNewObject.BUTTON_SAVE_AND_CLOSE
 
   def __init__(self, driver):
     super(BaseModal, self).__init__(driver)
     self.button_save_and_close = base.Button(driver, self.locator_button_save)
-    self.ui_title = base.TextInputField(self._driver,
-                                        self._locator_ui_title)
+    self.ui_title = base.TextInputField(self._driver, self._locator_ui_title)
+    self.ui_code = base.TextInputField(self._driver, self._locator_ui_code)
 
   def enter_title(self, text):
     """
@@ -23,15 +29,64 @@ class BaseModal(base.Modal):
     """
     self.ui_title.enter_text(text)
 
-  def save_and_close(self):
-    raise NotImplementedError
+  def enter_code(self, text):
+    """
+    Args:
+        text (basestring)
+    """
+    self.ui_code.enter_text(text)
+
+
+class SetFieldsModal(base.Modal):
+  """Class representing a base set visible fields modal."""
+  _locators = locator.ModalSetVisibleFields
+  button_set_fields = None
+  fields_elements = None
+
+  def __init__(self, driver, widget_name):
+    """
+    Args:
+        driver (CustomDriver)
+        widget_name (#widget_name according URL)
+    """
+    super(SetFieldsModal, self).__init__(driver)
+    self.widget_name = widget_name
+
+  def set_visible_fields(self, fields):
+    """Set visible fields to display objects on the tree view."""
+    locator_modal_fields = (By.CSS_SELECTOR,
+                            self._locators.MODAL.format(self.widget_name))
+    locator_fields_titles = (
+        By.CSS_SELECTOR,
+        locator.ModalSetVisibleFields.FIELDS_TITLES.format(self.widget_name))
+    locator_fields_checkboxes = (
+        By.CSS_SELECTOR,
+        (locator.ModalSetVisibleFields.FIELDS_CHECKBOXES.
+         format(self.widget_name)))
+    selenium_utils.get_when_visible(self._driver, locator_modal_fields)
+    self.fields_elements = base.ListCheckboxes(
+        self._driver, locator_fields_titles, locator_fields_checkboxes)
+    self.fields_elements.select_by_titles(fields)
+
+  def save_set_visible_fields(self):
+    """Save visible fields to display objects on the tree view."""
+    _locator_set_fields = (
+        By.CSS_SELECTOR,
+        self._locators.BUTTON_SET_FIELDS.format(self.widget_name))
+    self.button_set_fields = base.Button(self._driver, _locator_set_fields)
+    self.button_set_fields.click()
+
+  def set_and_save_visible_fields(self, fields):
+    """Set and save visible fields to display objects on the tree view."""
+    self.set_visible_fields(fields)
+    self.save_set_visible_fields()
 
 
 class ProgramsModal(BaseModal):
   """Class representing a modal base for the program object"""
+  # pylint: disable=too-many-instance-attributes
 
   _locators = locator.ModalCreateNewProgram
-  _locator_ui_title = locator.ModalCreateNewProgram.UI_TITLE
 
   def __init__(self, driver):
     super(ProgramsModal, self).__init__(driver)
@@ -108,12 +163,12 @@ class ProgramsModal(BaseModal):
   def filter_and_select_primary_contact(self, text):
     """Enters the text into the primary contact element"""
     # pylint: disable=invalid-name
-    self.ui_primary_contact.filter_and_select_first(text)
+    self.ui_primary_contact.filter_and_select_el_by_text(text)
 
   def filter_and_select_secondary_contact(self, text):
     """Enters the text into the secondary contact element"""
     # pylint: disable=invalid-name
-    self.ui_secondary_contact.filter_and_select_first(text)
+    self.ui_secondary_contact.filter_and_select_el_by_text(text)
 
   def enter_program_url(self, url):
     """Enters the program url for this program object
@@ -148,8 +203,8 @@ class ProgramsModal(BaseModal):
 
 
 class ControlsModal(BaseModal):
-  """Class representing a modal base for the control object"""
-
+  """Class representing a modal base for the control object."""
+  # pylint: disable=too-many-instance-attributes
   _locators = locator.ModalCreateNewControl
 
   def __init__(self, driver):
@@ -288,11 +343,6 @@ class IssuesModal(BaseModal):
   _locator_ui_title = locator.ModalCreateNewIssue.UI_TITLE
 
 
-class RequestsModal(BaseModal):
-  """Class representing a base request modal"""
-  _locator_ui_title = locator.ModalCreateNewRequest.UI_TITLE
-
-
 class ProcessesModal(BaseModal):
   """Class representing a base process modal"""
   _locator_ui_title = locator.ModalCreateNewProcess.UI_TITLE
@@ -316,3 +366,69 @@ class ProductsModal(BaseModal):
 class ProjectsModal(BaseModal):
   """Class representing a base product modal"""
   _locator_ui_title = locator.ModalCreateNewProject.UI_TITLE
+
+
+class AsmtTmplModal(BaseModal):
+  """Class representing a base assessment creation modal."""
+  _locators = locator.ModalCreateNewAsmtTmpl
+
+  def __init__(self, driver):
+    super(AsmtTmplModal, self).__init__(driver)
+
+  def fill_minimal_data(self, title, code):
+    """Enter minimal data to create assessment template."""
+    self.enter_title(title)
+    self.enter_code(code)
+
+
+class AsmtsModal(BaseModal):
+  """Class representing a base assessment creation modal."""
+  _locators = locator.ModalCreateNewAsmt
+
+  def __init__(self, driver):
+    super(AsmtsModal, self).__init__(driver)
+
+  def fill_minimal_data(self, title, code):
+    """Enter minimal data to create assessment."""
+    self.enter_title(title)
+    self.enter_code(code)
+
+
+class AsmtsModalGenerate(base.Modal):
+  """Class representing a base assessment generation modal."""
+  _locators = locator.ModalGenerateNewAsmt
+
+  def __init__(self, driver):
+    super(AsmtsModalGenerate, self).__init__(driver)
+    self.button_search = None
+    self.controls_elements = None
+    self.asmt_tmpl_element = None
+
+  def select_asmt_tmpl(self, asmt_tmpl_title):
+    """Select assessment template via dropdown according to the text title."""
+    self.asmt_tmpl_element = base.TextFilterDropdown(
+        self._driver,
+        self._locators.SELECT_ASMT_TMPL_OPTIONS,
+        self._locators.SELECT_ASMT_TMPL_DROPDOWN)
+    self.asmt_tmpl_element.find_and_select_el_by_text(asmt_tmpl_title)
+
+  def search_objects(self):
+    """Click to the button to search objects according set filters."""
+    self.button_search = base.Button(self._driver,
+                                     self._locators.BUTTON_SEARCH)
+    self.button_search.click_when_visible()
+
+  def select_objs_under(self, controls_titles):
+    """Click checkboxes (Select objects) which was found after search
+    was completed."""
+    self.controls_elements = base.ListCheckboxes(
+        self._driver,
+        self._locators.FOUND_OBJECTS_TITLES,
+        self._locators.FOUND_OBJECTS_CHECKBOXES)
+    self.controls_elements.select_by_titles(controls_titles)
+
+  def fill_minimal_data(self, asmt_tmpl, controls):
+    """Enter minimal data to generate assessment(s)."""
+    self.select_asmt_tmpl(asmt_tmpl)
+    self.search_objects()
+    self.select_objs_under(controls)

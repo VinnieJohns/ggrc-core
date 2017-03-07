@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 (function(root, $, can) {
@@ -38,7 +38,7 @@
       options.cache = false;
     }
     if (/^\/api\/\w+/.test(options.url)) {
-      jqXHR.setRequestHeader("X-Requested-By", "gGRC");
+      jqXHR.setRequestHeader("X-Requested-By", "GGRC");
       jqXHR.done(function(data, status, xhr) {
         if (!/^\/api\/\w+\/\d+/.test(options.url) && options.type.toUpperCase() === "GET") {
           return;
@@ -63,14 +63,8 @@
     }
   });
 
-  //Set up default failure callbacks if nonesuch exist.
-  var _old_ajax = $.ajax,
-      statusmsgs = {
-        401: "The server says you are not authorized.  Are you logged in?",
-        409: "There was a conflict in the object you were trying to update.  The version on the server is newer.",
-        412: "One of the form fields isn't right.  Check the form for any highlighted fields."
-      };
-
+  // Set up default failure callbacks if nonesuch exist.
+  var _old_ajax = $.ajax;
 
   // Here we break the deferred pattern a bit by piping back to original AJAX deferreds when we
   // set up a failure handler on a later transformation of that deferred.  Why?  The reason is that
@@ -114,14 +108,20 @@
     return _ajax;
   };
 
-
   $doc.ajaxError(function (event, jqxhr, settings, exception) {
-    if (!jqxhr.hasFailCallback || settings.flashOnFail || (settings.flashOnFail == null && jqxhr.flashOnFail)) {
+    var message;
+    if (!jqxhr.hasFailCallback || settings.flashOnFail ||
+      (!settings.flashOnFail && jqxhr.flashOnFail)) {
       // TODO: Import produced 'canceled' ajax flash message that needed handling. Will refactor once better method works.
-      if (settings.url.indexOf("import") === -1 || exception !== "canceled") {
-        $body.trigger("ajax:flash", {
-          "error": jqxhr.getResponseHeader("X-Flash-Error") || statusmsgs[jqxhr.status] || exception.message || exception
-        });
+      if (settings.url.indexOf('import') === -1 || exception !== 'canceled') {
+        message = jqxhr.getResponseHeader('X-Flash-Error') ||
+          GGRC.Errors.messages[jqxhr.status] || exception.message || exception;
+
+        if (message) {
+          GGRC.Errors.notifier('error', message);
+        } else {
+          GGRC.Errors.notifierXHR('error')(jqxhr);
+        }
       }
     }
   });

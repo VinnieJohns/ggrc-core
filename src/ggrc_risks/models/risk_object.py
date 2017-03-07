@@ -1,15 +1,15 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 #
 # Borrows heavily from ggrc_workflows.models.workflow_object
 
 from ggrc import db
 from sqlalchemy.ext.associationproxy import association_proxy
-from ggrc.models.mixins import Mapping
+from ggrc.models.mixins import Base
 from ggrc.models.reflection import PublishOnly
 
 
-class RiskObject(Mapping, db.Model):
+class RiskObject(Base, db.Model):
   __tablename__ = 'risk_objects'
 
   risk_id = db.Column(

@@ -1,83 +1,68 @@
 /*!
-    Copyright (C) 2016 Google Inc.
-    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-*/
+ Copyright (C) 2017 Google Inc.
+ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
 
-(function (can, $) {
-  can.Component.extend({
+(function (can, GGRC) {
+  'use strict';
+
+  GGRC.Components('customAttributes', {
     tag: 'custom-attributes',
+    template: '<content/>',
     scope: {
       instance: null,
-      // Make sure custom_attribute_definitions & custom_attribute_values
-      // get loaded
-      load: '@',
-      loading: false,
-      refreshAttributes: function () {
-        this.attr('loading', true);
-        $.when(
-          this.instance.load_custom_attribute_definitions(),
-          this.instance.refresh_all('custom_attribute_values')
-            .then(function (values) {
-              var rq = new RefreshQueue();
-              _.each(values, function (value) {
-                if (value.attribute_object) {
-                  rq.enqueue(value.attribute_object);
+      items: [],
+      setItems: function (isReady) {
+        var values = [];
+        if (isReady) {
+          values = this.getValues().sort(function (a, b) {
+            return a.cad.id - b.cad.id;
+          });
+          this.attr('items', values);
+        }
+      },
+      getValues: function () {
+        var result = [];
+
+        can.each(this.attr('instance.custom_attribute_definitions'),
+          function (cad) {
+            var cav;
+            var type = cad.attribute_type;
+            can.each(this.attr('instance.custom_attribute_values'),
+              function (val) {
+                val = val.isStub ? val : val.reify();
+                if (val.custom_attribute_id === cad.id) {
+                  cav = val;
                 }
               });
-              return rq.trigger();
-            })
-            .then(function () {
-              this.instance.setup_custom_attributes();
-            }.bind(this))
-        ).always(function () {
-          this.attr('loading', false);
-        }.bind(this));
-      }
-    },
-    content: '<content/>',
-    events: {
-      '{scope.instance} updated': function () {
-        this.scope.refreshAttributes();
+            result.push({
+              cav: cav,
+              cad: {
+                id: cad.id,
+                attribute_type: cad.attribute_type,
+                mandatory: cad.mandatory,
+                title: cad.title,
+                label: cad.label,
+                placeholder: cad.placeholder,
+                helptext: cad.helptext,
+                multi_choice_options: cad.multi_choice_options
+              },
+              type: GGRC.Utils.mapCAType(type)
+            });
+          }.bind(this));
+        return result;
       }
     },
     init: function () {
-      if (!this.scope.instance.class.is_custom_attributable) {
-        return;
+      if (this.scope.instance.class.is_custom_attributable) {
+        this.scope.instance.setup_custom_attributes();
       }
-      if (this.scope.load) {
-        this.scope.refreshAttributes();
-      }
+      this.scope.setItems(true);
     },
-    helpers: {
-      with_value_for_id: function (id, options) {
-        var ret;
-        id = Mustache.resolve(id);
-        can.each(this.instance.custom_attribute_values, function (value) {
-          value = value.reify();
-          if (value.custom_attribute_id === id) {
-            ret = value.attribute_value;
-          }
-        });
-        return options.fn(options.contexts.add({
-          value: ret
-        }));
-      },
-      with_object_for_id: function (id, options) {
-        var ret;
-        id = Mustache.resolve(id);
-        can.each(this.instance.custom_attribute_values, function (value) {
-          value = value.reify();
-          if (value.custom_attribute_id === id) {
-            ret = value.attribute_object;
-            if (ret) {
-              ret = ret.reify();
-            }
-          }
-        });
-        return options.fn(options.contexts.add({
-          object: ret
-        }));
+    events: {
+      '{scope.instance} isReadyForRender': function (sc, ev, isReady) {
+        this.scope.setItems(isReady);
       }
     }
   });
-})(window.can, window.can.$);
+})(window.can, window.GGRC);

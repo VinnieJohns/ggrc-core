@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Tests for workflow object exports."""
@@ -23,7 +23,7 @@ class TestExportEmptyTemplate(TestCase):
     self.client.get("/login")
     self.headers = {
         'Content-Type': 'application/json',
-        "X-Requested-By": "gGRC",
+        "X-Requested-By": "GGRC",
         "X-export-view": "blocks",
     }
 
@@ -55,7 +55,7 @@ class TestExportEmptyTemplate(TestCase):
     self.assertIn("Task,", response.data)
     self.assertIn("Cycle,", response.data)
     self.assertIn("Cycle Task Group,", response.data)
-    self.assertIn("Cycle Task Group Object Task,", response.data)
+    self.assertIn("Cycle Task,", response.data)
 
 
 class TestExportMultipleObjects(TestCase):
@@ -76,7 +76,7 @@ class TestExportMultipleObjects(TestCase):
     data = {"file": (open(join(CSV_DIR, filename)), filename)}
     headers = {
         "X-test-only": "true" if dry_run else "false",
-        "X-requested-by": "gGRC",
+        "X-requested-by": "GGRC",
     }
     cls.tc.post("/_service/import_csv",
                 data=data, headers=headers)
@@ -101,7 +101,7 @@ class TestExportMultipleObjects(TestCase):
     self.client.get("/login")
     self.headers = {
         'Content-Type': 'application/json',
-        "X-Requested-By": "gGRC",
+        "X-Requested-By": "GGRC",
         "X-export-view": "blocks",
     }
     self.activate()
@@ -273,22 +273,6 @@ class TestExportMultipleObjects(TestCase):
     response = self.export_csv(data).data
     self.assertEqual(2, response.count("CYCLETASK-"))
     self.assertEqual(3, response.count(",p1,"))
-
-  def test_workflow_no_access_users(self):
-    """ test export of No Access users """
-    data = [
-        {
-            "object_name": "Workflow",
-            "fields": ["workflow_mapped"],
-            "filters": {
-                "expression": {}
-            }
-        }
-    ]
-    response = self.export_csv(data).data
-    users = response.splitlines()[2:-2]
-    expected = [",user20@ggrc.com"] * 10
-    self.assertEqual(expected, users)
 
   def test_wf_indirect_relevant_filters(self):
     """ test related filter for indirect relationships on wf objects """

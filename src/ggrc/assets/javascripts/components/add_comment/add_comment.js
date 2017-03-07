@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -27,6 +27,8 @@
       list: [],
       // the following are just for the case when we have no object to start with,
       changes: [],
+      description: null,
+      sendNotification: false,
       removePending: function (scope, el, ev) {
         var joins = this.instance._pending_joins;
         var model = scope.what;
@@ -40,7 +42,7 @@
           joins.splice(index, 1);
         });
       },
-      get_assignee_type: can.compute(function () {
+      get_assignee_type: function () {
         var types = new Map([
           ['related_verifiers', 'verifier'],
           ['related_assessors', 'assessor'],
@@ -69,47 +71,48 @@
           }
         });
         return user_type;
-      })
+      }
     },
     events: {
-      init: function () {
+      inserted: function () {
         if (!this.scope.attr('source_mapping')) {
           this.scope.attr('source_mapping', GGRC.page_instance());
         }
+        this.scope.attr('sendNotification',
+          this.scope.attr('parent_instance.send_by_default'));
         this.newInstance();
       },
       newInstance: function () {
         var instance = CMS.Models.Comment();
-        instance._source_mapping = this.scope.attr('source_mapping');
-        instance.attr('context', this.scope.attr('parent_instance.context'));
+        instance.attr({
+          _source_mapping: this.scope.attr('source_mapping'),
+          context: this.scope.attr('parent_instance.context')
+        });
         this.scope.attr('instance', instance);
       },
       cleanPanel: function () {
         this.scope.attachments.replace([]);
-        this.element.find('textarea').val('');
+        this.scope.attr('description', null);
       },
       /**
        * The component's click event (happens when the user clicks add comment),
        * takes care of saving the comment with appended evidence.
        */
       '.btn-success click': function (el, ev) {
-        var $textarea = this.element.find('.add-comment textarea');
-        var description = $.trim($textarea.val());
+        var description = $.trim(this.scope.description);
         var attachments = this.scope.attachments;
         var source = this.scope.source_mapping;
         var instance = this.scope.instance;
         var data;
-        var $sendNotification = this.element.find('[name=send_notification]');
-        var sendNotification = $sendNotification[0].checked;
 
         if (!description.length && !attachments.length) {
           return;
         }
         data = {
           description: description,
-          send_notification: sendNotification,
+          send_notification: this.scope.attr('sendNotification'),
           context: source.context,
-          assignee_type: this.scope.attr('get_assignee_type')
+          assignee_type: this.scope.get_assignee_type()
         };
 
         this.scope.attr('isSaving', true);

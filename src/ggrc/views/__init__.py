@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ggrc.views
@@ -35,7 +35,9 @@ from ggrc.models.reflection import AttributeInfo
 from ggrc.rbac import permissions
 from ggrc.services.common import as_json
 from ggrc.services.common import inclusion_filter
-from ggrc.services import query_helper
+from ggrc.services import query as services_query
+from ggrc.snapshotter import rules
+from ggrc.snapshotter.indexer import reindex as reindex_snapshots
 from ggrc.views import converters
 from ggrc.views import cron
 from ggrc.views import filters
@@ -44,40 +46,48 @@ from ggrc.views import notifications
 from ggrc.views.common import RedirectedPolymorphView
 from ggrc.views.registry import object_view
 from ggrc.utils import benchmark
+from ggrc.utils import generate_query_chunks
+from ggrc.utils import revisions
 
 
 # Needs to be secured as we are removing @login_required
 
+@app.route("/_background_tasks/refresh_revisions", methods=["POST"])
+@queued_task
+def refresh_revisions(_):
+  """Web hook to update revision content."""
+  revisions.do_refresh_revisions()
+  return app.make_response(("success", 200, [("Content-Type", "text/html")]))
+
+
 @app.route("/_background_tasks/reindex", methods=["POST"])
 @queued_task
 def reindex(_):
-  """
-  Web hook to update the full text search index
-  """
-
+  """Web hook to update the full text search index."""
   do_reindex()
-
-  return app.make_response((
-      'success', 200, [('Content-Type', 'text/html')]))
+  return app.make_response(("success", 200, [("Content-Type", "text/html")]))
 
 
 def do_reindex():
-  """
-  update the full text search index
-  """
+  """Update the full text search index."""
 
   indexer = get_indexer()
   indexer.delete_all_records(False)
 
-  # Find all models then remove base classes
-  #   (If we don't remove base classes, we get duplicates in the index.)
-  inheritance_base_models = [
-      all_models.Directive, all_models.SystemOrProcess
-  ]
-  models_ = set(all_models.all_models) - set(inheritance_base_models)
-  models_ = [model for model in models_ if model_is_indexed(model)]
+  # Remove model base classes and non searchable objects
+  excluded_models = {
+      all_models.Directive,
+      all_models.Option,
+      all_models.SystemOrProcess,
+      all_models.Role,
+  }
+  indexed_models = {model for model in all_models.all_models
+                    if model_is_indexed(model)}
 
-  for model in models_:
+  indexed_models -= excluded_models
+
+  for model in indexed_models:
+    # pylint: disable=protected-access
     mapper_class = model._sa_class_manager.mapper.base_mapper.class_
     query = model.query.options(
         db.undefer_group(mapper_class.__name__ + '_complete'),
@@ -86,6 +96,8 @@ def do_reindex():
       for instance in query_chunk:
         indexer.create_record(fts_record_for(instance), False)
       db.session.commit()
+
+  reindex_snapshots()
 
 
 def get_permissions_json():
@@ -99,11 +111,24 @@ def get_config_json():
   """Get public app config"""
   with benchmark("Get config JSON"):
     public_config = dict(app.config.public_config)
+    public_config.update(get_public_config())
+
     for extension_module in get_extension_modules():
       if hasattr(extension_module, 'get_public_config'):
         public_config.update(
             extension_module.get_public_config(get_current_user()))
+
     return json.dumps(public_config)
+
+
+def get_public_config():
+  """Expose additional permissions-dependent config to client."""
+  return {
+      "external_help_url": getattr(settings, "EXTERNAL_HELP_URL", ""),
+      "snapshotable_objects": list(rules.Types.all),
+      "snapshotable_ignored": list(rules.Types.ignore),
+      "snapshotable_parents": list(rules.Types.parents),
+  }
 
 
 def get_full_user_json():
@@ -144,6 +169,15 @@ def get_attributes_json():
 
 
 def get_import_types(export_only=False):
+  """Returns types that can be imported (and exported) or exported only.
+
+  Args:
+    export_only (default False): If set to true, return objects that can only
+        be exported and not imported.
+  Returns:
+    A list of models with model_singular and title_plural as keys.
+  """
+  # pylint: disable=protected-access
   types = get_exportables if export_only else get_importables
   data = []
   for model in set(types().values()):
@@ -220,7 +254,7 @@ def index():
               For any questions, please contact your administrator.""",
           "alert alert-warning")
   about_url = getattr(settings, "ABOUT_URL", None)
-  about_text = getattr(settings, "ABOUT_TEXT", "About gGRC")
+  about_text = getattr(settings, "ABOUT_TEXT", "About GGRC")
   return render_template(
       "welcome/index.haml",
       about_url=about_url,
@@ -238,18 +272,10 @@ def dashboard():
 
 @app.route("/objectBrowser")
 @login_required
-def objectBrowser():
+def object_browser():
   """The object Browser page
   """
   return render_template("dashboard/index.haml")
-
-
-def generate_query_chunks(query):
-  """Generate query chunks used by pagination"""
-  chunk_size = 100
-  count = query.count()
-  for offset in range(0, count, chunk_size):
-    yield query.order_by('id').limit(chunk_size).offset(offset).all()
 
 
 @app.route("/admin/reindex", methods=["POST"])
@@ -260,6 +286,21 @@ def admin_reindex():
   if not permissions.is_allowed_read("/admin", None, 1):
     raise Forbidden()
   task_queue = create_task("reindex", url_for(reindex.__name__), reindex)
+  return task_queue.make_response(
+      app.make_response(("scheduled %s" % task_queue.name, 200,
+                         [('Content-Type', 'text/html')])))
+
+
+@app.route("/admin/refresh_revisions", methods=["POST"])
+@login_required
+def admin_refresh_revisions():
+  """Calls a webhook that refreshes revision content."""
+  admins = getattr(settings, "BOOTSTRAP_ADMIN_USERS", [])
+  if get_current_user().email not in admins:
+    raise Forbidden()
+
+  task_queue = create_task("refresh_revisions", url_for(
+      refresh_revisions.__name__), refresh_revisions)
   return task_queue.make_response(
       app.make_response(("scheduled %s" % task_queue.name, 200,
                          [('Content-Type', 'text/html')])))
@@ -309,7 +350,6 @@ def contributed_object_views():
       object_view(models.System),
       object_view(models.Process),
       object_view(models.Product),
-      object_view(models.Request),
       object_view(models.OrgGroup),
       object_view(models.Facility),
       object_view(models.Market),
@@ -319,6 +359,7 @@ def contributed_object_views():
       object_view(models.Person),
       object_view(models.Vendor),
       object_view(models.Issue),
+      object_view(models.Snapshot),
   ]
 
 
@@ -346,7 +387,7 @@ def init_extra_views(app_):
   converters.init_converter_views()
   cron.init_cron_views(app_)
   notifications.init_notification_views(app_)
-  query_helper.init_query_view(app_)
+  services_query.init_query_view(app_)
 
 
 def init_all_views(app_):

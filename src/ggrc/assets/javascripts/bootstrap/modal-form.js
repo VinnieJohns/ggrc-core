@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -159,15 +159,17 @@
     },
 
     hide: function (e) {
-      var control = this.control;
-      var options = control && control.options;
       var instance = this.instance;
       var pending;
       var hasPending;
       var changedInstance;
 
+      if (e) {
+        e.preventDefault();
+      }
+
       // If the hide was initiated by the backdrop, check for dirty form data before continuing
-      if (e && $(e.target).is('.modal-backdrop')) {
+      if (e && $(e.target).is('.modal-backdrop,.fa-times')) {
         if ($(e.target).is('.disabled')) {
             // In the case of a disabled modal backdrop, treat it like any other disabled data-dismiss,
             //  i.e. do nothing.
@@ -184,18 +186,20 @@
             modal_title: 'Discard Changes',
             modal_description: 'Are you sure that you want to discard your changes?',
             modal_confirm: 'Discard',
-            instance: instance,
-            model: options.model,
             skip_refresh: true
           }, function () {
             can.trigger(instance, 'modal:dismiss');
             this.$element
               .find("[data-dismiss='modal'], [data-dismiss='modal-reset']")
               .trigger('click');
+            $(window).trigger('modal:dismiss', this.options);
             this.hide();
           }.bind(this));
           return;
         }
+
+        // trigger event if form is not dirty
+        $(window).trigger('modal:dismiss', this.options);
       }
 
       // Hide the modal like normal

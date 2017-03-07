@@ -1,9 +1,9 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
-  <li class="tree-item "
+  <li class="tree-item {{#if instance.snapshot}}snapshot{{/if}} "
     data-object-id="{{instance.id}}"
     data-object-type="{{instance.class.table_singular}}"
     {{addclass "t-" instance.workflow_state}}>
@@ -40,34 +40,7 @@
                       {{else}}
                         <div class="owner tree-title-area">
                           {{#instance}}
-                            {{#switch attr_name}}
-                              {{#case 'ra_manager'}}
-                                <span>
-                                  {{#using contact=instance.ra_manager}}
-                                    {{{renderLive '/static/mustache/people/popover.mustache' person=contact}}}
-                                  {{/using}}
-                                </span>
-                              {{/case}}
-                              {{#case 'ra_counsel'}}
-                                <span>
-                                  {{#using contact=instance.ra_counsel}}
-                                    {{{renderLive '/static/mustache/people/popover.mustache' person=contact}}}
-                                  {{/using}}
-                                </span>
-                              {{/case}}
-
-                              {{#default}}
-                                {{#if_helpers '\
-                                  #if_equals' attr_name 'url' '\
-                                  or #if_equals' attr_name 'reference_url'}}
-                                    <a class="url" href="{{get_url_value attr_name instance}}" target="_blank">
-                                      {{get_default_attr_value attr_name instance}}
-                                    </a>
-                                {{else}}
-                                  {{get_default_attr_value attr_name instance}}
-                                {{/if_helpers}}
-                              {{/default}}
-                            {{/switch}}
+                            {{>'/static/mustache/risk_assessments/tree-item-attr.mustache'}}
                           {{/instance}}
                         </div>
                       {{/if_equals}}
@@ -77,31 +50,7 @@
               </div>
 
               <div class="span{{display_options.action_width}}">
-                <div class="show-details">
-                  {{#child_options}}
-                    {{#if add_item_view}}
-                      {{{renderLive add_item_view}}}
-                    {{/if}}
-                  {{/child_options}}
-                  {{#if instance.viewLink}}
-                    {{#is_allowed "view_object_page" instance}}
-                      <a href="{{instance.viewLink}}" target="_blank"><i class="fa fa-long-arrow-right"></i></a>
-                    {{/is_allowed}}
-                  {{/if}}
-                </div>
-                <ul class="tree-action-list">
-                  {{#infer_roles instance}}
-                    <li>
-                      <i class="fa fa-person" rel="tooltip" data-placement="left" data-original-title="{{.}} "></i>
-                    </li>
-                  {{/infer_roles}}
-                  <li>
-                    {{>'/static/mustache/base_objects/relevance_action.mustache'}}
-                  </li>
-                  <li>
-                    {{{renderLive '/static/mustache/base_objects/states.mustache'}}}
-                  </li>
-                </ul>
+                <tree-node-actions instance="instance" child-options="child_options" draw-states="true"></tree-node-actions>
               </div>
             </div>
           </div><!-- item-data end -->
@@ -116,6 +65,7 @@
           {{#prune_context}} {{! this line is just chopping the context stack down to one element}}
               {{#child_options}}
                 <div class="inner-tree">
+                  <spinner toggle="subTreeLoading"></spinner>
                   <ul class="tree-structure new-tree" {{data 'options'}} {{ (el) -> el.cms_controllers_tree_view(el.data("options")) }}></ul>
                 </div>
               {{/child_options}}

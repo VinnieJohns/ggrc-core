@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 (function (can, $) {
@@ -101,6 +101,45 @@
     }
   });
 
+  can.Model.Join('CMS.Models.Snapshot', {
+    root_object: 'snapshot',
+    root_collection: 'snapshots',
+    attributes: {
+      context: 'CMS.Models.Context.stub',
+      modified_by: 'CMS.Models.Person.stub',
+      parent: 'CMS.Models.Cacheable.stub',
+      revision: 'CMS.Models.Revision.stub'
+    },
+    join_keys: {
+      parent: can.Model.Cacheable,
+      revision: can.Model.Revision
+    },
+    defaults: {
+      parent: null,
+      revision: null
+    },
+    findAll: 'GET /api/snapshots',
+    update: 'PUT /api/snapshots/{id}',
+    child_instance: function (snapshotData) {
+    },
+    snapshot_instance: function (snapshotData) {
+    }
+  }, {
+    reinit: function () {
+      var revision = CMS.Models.Revision.findInCacheById(this.revision_id);
+      this.content = revision.content;
+    },
+    display_name: function () {
+      return '';
+    },
+    title: function () {
+      return '';
+    },
+    description: function () {
+      return '';
+    }
+  });
+
   can.Model.Join('CMS.Models.Relationship', {
     root_object: 'relationship',
     root_collection: 'relationships',
@@ -154,6 +193,48 @@
                 model.destination.type === source.type &&
                 model.destination.id === source.id;
       }));
+    },
+    /**
+     * Return the Relationship between two objects.
+     *
+     * @param {CMS.Models.Cacheable} first - First object.
+     * @param {CMS.Models.Cacheable} second - Second object.
+     * @param {boolean} noRefresh - Flag for reject if not relationship.
+     * @return {Promise} - Resolved with Relationship instances if they were
+     * found or an empty list if instances are not related.
+     */
+    getRelationshipBetweenInstances: function rec(first, second, noRefresh) {
+      var relationshipIds = _.intersection(getRelationshipsIds(first),
+        getRelationshipsIds(second));
+      var relationships;
+      var result = $.Deferred();
+
+      function getRelationshipsIds(obj) {
+        var union = _.union(obj.related_sources, obj.related_destinations);
+        return _.map(union, 'id');
+      }
+      if (!relationshipIds.length && noRefresh) {
+        result.resolve([]);
+        return result.promise();
+      }
+      if (!relationshipIds.length) {
+        // try to refresh the instances if don't find the relationship between them
+        return $.when(first.refresh(), second.refresh())
+          .then(function (fObj, sObj) {
+            return rec(fObj, sObj, true);
+          }).fail(function (e) {
+            result.resolve([]);
+          });
+      }
+      if (relationshipIds.length > 1) {
+        console.warn('Duplicated relationship objects', relationshipIds);
+      }
+      relationships = can.map(relationshipIds, function (id) {
+        return CMS.Models.Relationship.findInCacheById(id) ||
+          CMS.Models.get_instance('Relationship', id);
+      });
+      result.resolve(relationships);
+      return result.promise();
     }
   }, {
     reinit: function () {
@@ -196,23 +277,27 @@
   }, {
     save: function () {
       var role;
-      if (!this.role && this.role_name) {
-        role = _.find(CMS.Models.Role.cache, {name: this.role_name});
-        if (role) {
-          this.attr('role', role.stub());
-          return this._super.apply(this, arguments);
-        }
-        return CMS.Models.Role.findAll({
-          name__in: this.role_name
-        }).then(function (roles) {
-          if (roles.length < 1) {
-            return new $.Deferred().reject('Role not found');
-          }
-          this.attr('role', roles[0].stub());
-          return this._super.apply(this, arguments);
-        }.bind(this));
+      var _super = this._super;
+
+      if (this.role && !this.role_name) {
+        return _super.apply(this, arguments);
       }
-      return this._super.apply(this, arguments);
+
+      role = _.find(CMS.Models.Role.cache, {name: this.role_name});
+      if (role) {
+        this.attr('role', role.stub());
+        return _super.apply(this, arguments);
+      }
+      return CMS.Models.Role.findAll({
+        name__in: this.role_name
+      }).then(function (role) {
+        if (!role.length) {
+          return new $.Deferred().reject('Role not found');
+        }
+        role = role[0];
+        this.attr('role', role.stub());
+        return _super.apply(this, arguments);
+      }.bind(this));
     }
   });
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import textwrap
@@ -21,7 +21,7 @@ class TestOneTimeWorkflowNotification(TestCase):
   """
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestOneTimeWorkflowNotification, self).setUp()
     self.api = Api()
     self.wf_generator = WorkflowsGenerator()
     self.object_generator = ObjectGenerator()

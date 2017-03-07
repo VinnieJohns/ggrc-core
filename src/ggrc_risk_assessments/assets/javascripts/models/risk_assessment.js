@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -13,6 +13,7 @@
     root_object: "risk_assessment",
     root_collection: "risk_assessments",
     category: "risk_assessment",
+    mixins: ['ca_update', 'timeboxed'],
     findAll: "GET /api/risk_assessments",
     findOne: "GET /api/risk_assessments/{id}",
     create: "POST /api/risk_assessments",
@@ -27,7 +28,7 @@
       program: "CMS.Models.Program.stub",
       modified_by: "CMS.Models.Person.stub",
       object_documents: "CMS.Models.ObjectDocument.stubs",
-      custom_attribute_values : "CMS.Models.CustomAttributeValue.stubs",
+      custom_attribute_values : "CMS.Models.CustomAttributeValue.stubs"
     },
     tree_view_options: {
       attr_list: [

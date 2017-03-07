@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -234,7 +234,7 @@
                                        .value();
       return $.when.apply($, dfds).then(function () {
         return _.filter(_.flatten(arguments), function (revision) {
-          // revisions where source == desitnation will be introduced when
+          // revisions where source == destination will be introduced when
           // spoofing the obj <-> instance mapping
           return revision.source.href !== revision.destination.href;
         });
@@ -521,7 +521,8 @@
 
       perPersonMappings = _(mappings)
         .filter(function (rev) {
-          if (rev.source_type === 'Person' || rev.destination_type === 'Person') {
+          if (rev.source_type === 'Person' ||
+            rev.destination_type === 'Person') {
             return rev;
           }
         })
@@ -535,7 +536,8 @@
       perPersonRoleHistory = _.zipObject(
         _.map(perPersonMappings, function (revisions, pid) {
           var history = _.map(revisions, function (rev) {
-            if (rev.action === 'deleted') {
+            // Add extra check to fix possible issue with inconsistent data
+            if (rev.action === 'deleted' || !rev.content.attrs.AssigneeType) {
               return {
                 updated_at: rev.updated_at,
                 role: 'none'

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """ This module is used for import and export of data with csv files """
@@ -24,7 +24,6 @@ from ggrc.models import Product
 from ggrc.models import Program
 from ggrc.models import Project
 from ggrc.models import Regulation
-from ggrc.models import Request
 from ggrc.models import Section
 from ggrc.models import Standard
 from ggrc.models import System
@@ -79,7 +78,6 @@ GGRC_IMPORTABLE = {
     "program": Program,
     "project": Project,
     "regulation": Regulation,
-    "request": Request,
     "section": Section,
     "standard": Standard,
     "system": System,

@@ -1,21 +1,19 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from ggrc import db
 from sqlalchemy.orm import validates
 from ggrc.models.deferred import deferred
 from ggrc.models.mixins import BusinessObject, Timeboxed, CustomAttributable
-from ggrc.models.object_document import Documentable
 from ggrc.models.object_owner import Ownable
 from ggrc.models.object_person import Personable
 from ggrc.models.option import Option
 from ggrc.models.relationship import Relatable
 from ggrc.models.utils import validate_option
 from ggrc.models.track_object_state import HasObjectState
-from ggrc.models.track_object_state import track_state_for_class
 
 
-class Product(HasObjectState, CustomAttributable, Documentable, Personable,
+class Product(HasObjectState, CustomAttributable, Personable,
               Relatable, Timeboxed, Ownable, BusinessObject, db.Model):
   __tablename__ = 'products'
 
@@ -25,7 +23,7 @@ class Product(HasObjectState, CustomAttributable, Documentable, Personable,
   kind = db.relationship(
       'Option',
       primaryjoin='and_(foreign(Product.kind_id) == Option.id, '
-      'Option.role == "product_type")',
+      'Option.role == "product_kind")',
       uselist=False,
   )
 
@@ -45,7 +43,7 @@ class Product(HasObjectState, CustomAttributable, Documentable, Personable,
   @validates('kind')
   def validate_product_options(self, key, option):
     return validate_option(
-        self.__class__.__name__, key, option, 'product_type')
+        self.__class__.__name__, key, option, 'product_kind')
 
   @classmethod
   def _filter_by_kind(cls, predicate):
@@ -59,5 +57,3 @@ class Product(HasObjectState, CustomAttributable, Documentable, Personable,
 
     query = super(Product, cls).eager_query()
     return query.options(orm.joinedload('kind'))
-
-track_state_for_class(Product)

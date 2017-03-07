@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 set -o nounset
@@ -137,8 +137,6 @@ unittests_tests () {
   print_line
 
   echo "Running karma tests"
-
-  docker exec -id ${PROJECT}_selenium_1 python /selenium/bin/chrome_karma.py
 
   docker exec -i ${PROJECT}_dev_1 su vagrant -c "
     source /vagrant/bin/init_vagrant_env

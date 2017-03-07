@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -22,7 +22,7 @@
 
     DELAY: 100, // Number of ms to wait before the first batch is fired
     BATCH: GGRC.config.MAX_INSTANCES || 3, // Maximum number of POST/PUT requests at any given time
-    BATCH_SIZE: 100,
+    BATCH_SIZE: 1000,
     _queue: [],
     _buckets: {},
     _timeout: null,
@@ -49,12 +49,11 @@
         }).promise();
         dfd.always(function (data, type) {
           if (type === 'error') {
-            data = data.responseJSON;
-            if (_.isUndefined(data)) {
-              return;
-            }
+            can.each(objs, function (obj) {
+              obj._dfd.reject(data);
+            });
           }
-          if ("background_task" in data) {
+          if ('background_task' in data) {
             return CMS.Models.BackgroundTask.findOne({
               id: data.background_task.id
             }).then(function (task) {
@@ -94,13 +93,17 @@
         };
         can.each(objs, function (obj, idx) {
           var single = data[idx];
-          if (single[0] >= 200 && single[0] < 300) {
+          // Add extra check to avoid possible exceptions
+          single = Array.isArray(single) ? single : false;
+          if (single && single[0] >= 200 && single[0] < 300) {
             obj._save(cb(single));
           } else {
             obj._dfd.reject(obj, single);
           }
         });
       });
+
+      bucket.save_responses.length = 0;
     },
 
     _step: function (elem) {
@@ -123,7 +126,7 @@
       };
       if (obj.isNew()) {
         type = obj.constructor.table_singular;
-        bucketName = type + (obj.run_in_background ? "_bg" : "");
+        bucketName = type + (obj.run_in_background ? '_bg' : '');
         bucket = this._buckets[bucketName];
 
         if (_.isUndefined(bucket)) {

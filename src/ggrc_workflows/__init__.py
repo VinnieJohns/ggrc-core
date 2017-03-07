@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from datetime import datetime, date
@@ -10,7 +10,7 @@ from ggrc.login import get_current_user
 from ggrc.models import all_models
 from ggrc.models.relationship import Relationship
 from ggrc.rbac.permissions import is_allowed_update
-from ggrc.services.common import Resource
+from ggrc.services.common import Resource, log_event
 from ggrc.services.registry import service
 from ggrc_workflows import models, notification
 from ggrc_workflows.models import relationship_helper
@@ -408,10 +408,13 @@ def ensure_assignee_is_workflow_member(workflow, assignee):
   if not assignee:
     return
 
+  if any(assignee == wp.person for wp in workflow.workflow_people):
+    return
+
   # Check if assignee is mapped to the Workflow
   workflow_people = models.WorkflowPerson.query.filter(
       models.WorkflowPerson.workflow_id == workflow.id,
-      models.WorkflowPerson.person_id == assignee.id).all()
+      models.WorkflowPerson.person_id == assignee.id).count()
   if not workflow_people:
     workflow_person = models.WorkflowPerson(
         person=assignee,
@@ -424,7 +427,7 @@ def ensure_assignee_is_workflow_member(workflow, assignee):
   from ggrc_basic_permissions.models import UserRole
   user_roles = UserRole.query.filter(
       UserRole.context_id == workflow.context_id,
-      UserRole.person_id == assignee.id).all()
+      UserRole.person_id == assignee.id).count()
   if not user_roles:
     workflow_member_role = _find_role('WorkflowMember')
     user_role = UserRole(
@@ -500,15 +503,6 @@ def handle_task_group_delete(sender, obj=None, src=None, service=None):  # noqa 
   update_workflow_state(obj.workflow)
 
 
-def set_internal_object_state(task_group_object, object_state, status):
-  if status is not None:
-    task_group_object.status = status
-  task_group_object.os_state = object_state
-  task_group_object.skip_os_state_update()
-
-  db.session.add(task_group_object)
-
-
 @Resource.model_deleted.connect_via(models.CycleTaskGroupObjectTask)
 def handle_cycle_task_group_object_task_delete(sender, obj=None,
                                                src=None, service=None):  # noqa pylint: disable=unused-argument
@@ -541,28 +535,12 @@ def handle_cycle_task_group_object_task_put(
 
   # Doing this regardless of status.history.has_changes() is important in order
   # to update objects that have been declined. It updates the os_last_updated
-  # date and last_updated_by via the call to set_internal_object_state.
+  # date and last_updated_by.
   if getattr(obj.task_group_task, 'object_approval', None):
-    os_state = None
-    status = None
-    if obj.status == 'Verified':
-      os_state = "Approved"
-      status = "Final"
-    elif obj.status == 'Declined':
-      os_state = "Declined"
-    elif obj.status == 'InProgress':
-      os_state = "UnderReview"
-
     for tgobj in obj.task_group_task.task_group.objects:
-      old_status = tgobj.status
-      set_internal_object_state(tgobj, os_state, status)
-      Signals.status_change.send(
-          tgobj.__class__,
-          obj=tgobj,
-          new_status=tgobj.status,
-          old_status=old_status
-      )
-      db.session.add(tgobj)
+      if obj.status == 'Verified':
+        tgobj.set_reviewed_state()
+        db.session.add(tgobj)
     db.session.flush()
 
 
@@ -882,8 +860,8 @@ def start_recurring_cycles():
     notification.handle_workflow_modify(None, workflow)
     notification.handle_cycle_created(None, obj=cycle)
 
+  log_event(db.session)
   db.session.commit()
-  db.session.flush()
 
 
 def get_cycles(workflow):

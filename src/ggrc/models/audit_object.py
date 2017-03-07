@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from ggrc import db
@@ -15,8 +15,6 @@ class AuditObject(Base, db.Model):
       db.Integer, db.ForeignKey('audits.id'), nullable=False)
   auditable_id = db.Column(db.Integer, nullable=False)
   auditable_type = db.Column(db.String, nullable=False)
-  requests = db.relationship(
-      'Request', backref='audit_object')
 
   @property
   def auditable_attr(self):

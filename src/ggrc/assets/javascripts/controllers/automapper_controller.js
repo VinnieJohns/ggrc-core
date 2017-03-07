@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -34,12 +34,22 @@
       this.instanceQueue = [];
 
       CMS.Models.Relationship.findAll(filter).then(function (relationships) {
+        var instance = GGRC.page_instance();
+        var modelName = instance.constructor.shortName;
+        if (relationships.length) {
+          return GGRC.Utils.CurrentPage
+            .initCounts(GGRC.tree_view.orderedWidgetsByType[modelName], {
+              type: instance.type,
+              id: instance.id
+            });
+        }
+      }).then(function () {
         var rq = new RefreshQueue();
-        can.each(relationships.concat(instances), function (relationship) {
-          rq.enqueue(relationship.source);
-          rq.enqueue(relationship.destination);
+        can.each(instances, function (instance) {
+          rq.enqueue(instance.source);
+          rq.enqueue(instance.destination);
         });
-        rq.trigger();
+        return rq.trigger();
       });
     }
   };

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """A mixin for objects with statuses"""
@@ -27,3 +27,7 @@ class Statusable(object):
       db.Enum(*VALID_STATES),
       nullable=False,
       default=START_STATE)
+
+  @classmethod
+  def default_status(cls):
+    return "Not Started"

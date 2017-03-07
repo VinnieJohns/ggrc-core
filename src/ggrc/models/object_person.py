@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -7,11 +7,12 @@ from sqlalchemy import orm
 
 from ggrc import db
 from ggrc.models.deferred import deferred
-from ggrc.models.mixins import Mapping, Timeboxed
+from ggrc.models.mixins import Base
+from ggrc.models.mixins import Timeboxed
 from ggrc.models.reflection import PublishOnly
 
 
-class ObjectPerson(Timeboxed, Mapping, db.Model):
+class ObjectPerson(Timeboxed, Base, db.Model):
   __tablename__ = 'object_people'
 
   role = deferred(db.Column(db.String), 'ObjectPerson')

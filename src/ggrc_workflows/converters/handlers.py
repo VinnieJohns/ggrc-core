@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
@@ -86,10 +86,23 @@ class TaskDateColumnHandler(handlers.ColumnHandler):
       3: "Mar/Jun/Sep/Dec",
   }
 
+  def add_error(self, template, **kwargs):
+    """Add row error.
+
+    This function adds a row error for the current task group task and removes
+    it from any task groups that it might belong to.
+    """
+    if self.row_converter.obj.task_group:
+      self.row_converter.obj.task_group = None
+    super(TaskDateColumnHandler, self).add_error(template, **kwargs)
+
   def parse_item(self):
     """ parse start and end columns fow workflow tasks
     """
     if not self.raw_value.strip():
+      if self.row_converter.is_new:
+        self.add_error(errors.MISSING_VALUE_ERROR,
+                       column_name=self.display_name)
       return None
     raw_parts = self.raw_value.lower().split(" ")
     try:
@@ -103,7 +116,7 @@ class TaskDateColumnHandler(handlers.ColumnHandler):
     except ValueError:
       self.add_error(errors.WRONG_VALUE_ERROR,
                      column_name=self.display_name)
-      return
+      return None
 
   def get_value(self):
     freq = self.row_converter.obj.task_group.workflow.frequency
@@ -127,7 +140,7 @@ class TaskDateColumnHandler(handlers.ColumnHandler):
       return ""
 
   def set_obj_attr(self):
-    if not self.value:
+    if not self.value or self.row_converter.ignore:
       return
     freq = self.row_converter.obj.task_group.workflow.frequency
     handler_map = {
@@ -306,31 +319,13 @@ class ObjectsColumnHandler(multi_object.ObjectsColumnHandler):
     db.session.flush()
 
 
-class ExportOnlyColumnHandler(handlers.ColumnHandler):
-
-  def parse_item(self):
-    pass
-
-  def set_obj_attr(self):
-    pass
-
-  def get_value(self):
-    return ""
-
-  def insert_object(self):
-    pass
-
-  def set_value(self):
-    pass
-
-
-class CycleWorkflowColumnHandler(ExportOnlyColumnHandler):
+class CycleWorkflowColumnHandler(handlers.ExportOnlyColumnHandler):
 
   def get_value(self):
     return self.row_converter.obj.workflow.slug
 
 
-class CycleColumnHandler(ExportOnlyColumnHandler):
+class CycleColumnHandler(handlers.ExportOnlyColumnHandler):
 
   def get_value(self):
     return self.row_converter.obj.cycle.slug
@@ -340,7 +335,7 @@ class TaskDescriptionColumnHandler(handlers.TextareaColumnHandler):
 
   def set_obj_attr(self):
     """ Set task attribute based on task type """
-    if not self.value:
+    if not self.value or self.row_converter.ignore:
       return
     if self.row_converter.obj.task_type == "text":
       self.row_converter.obj.description = self.value
@@ -356,19 +351,20 @@ class TaskDescriptionColumnHandler(handlers.TextareaColumnHandler):
 
 
 COLUMN_HANDLERS = {
-    "cycle": CycleColumnHandler,
-    "cycle_task_group": CycleTaskGroupColumnHandler,
-    "cycle_workflow": CycleWorkflowColumnHandler,
-    "frequency": FrequencyColumnHandler,
-    "notify_on_change": boolean.CheckboxColumnHandler,
-    "relative_end_date": TaskDateColumnHandler,
-    "relative_start_date": TaskDateColumnHandler,
-    "task_description": TaskDescriptionColumnHandler,
-    "task_group": TaskGroupColumnHandler,
-    "task_group_objects": ObjectsColumnHandler,
-    "task_type": TaskTypeColumnHandler,
-    "workflow": WorkflowColumnHandler,
-    "workflow_mapped": WorkflowPersonColumnHandler,
-    "finished_date": handlers.DateColumnHandler,
-    "verified_date": handlers.DateColumnHandler,
+    "default": {
+        "cycle": CycleColumnHandler,
+        "cycle_task_group": CycleTaskGroupColumnHandler,
+        "cycle_workflow": CycleWorkflowColumnHandler,
+        "frequency": FrequencyColumnHandler,
+        "notify_on_change": boolean.CheckboxColumnHandler,
+        "relative_end_date": TaskDateColumnHandler,
+        "relative_start_date": TaskDateColumnHandler,
+        "task_description": TaskDescriptionColumnHandler,
+        "task_group": TaskGroupColumnHandler,
+        "task_group_objects": ObjectsColumnHandler,
+        "task_type": TaskTypeColumnHandler,
+        "workflow": WorkflowColumnHandler,
+        "finished_date": handlers.DateColumnHandler,
+        "verified_date": handlers.DateColumnHandler,
+    },
 }

@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -128,6 +128,41 @@ describe('GGRC component registry', function () {
     });
   });
 
+  describe('getViewModel() method', function () {
+    it('gets the component\'s viewModel' +
+      'by registered component\'s name' +
+      ' and viewModel is defined as simple Object', function () {
+      var componentFoo = function () {};
+      var viewModel = {a: 1, b: 2};
+      componentFoo.prototype.viewModel = viewModel;
+      Components._registry.foo = componentFoo;
+      expect(Components.getViewModel('foo').attr().a).toBe(viewModel.a);
+      expect(Components.getViewModel('foo').attr().b).toBe(viewModel.b);
+    });
+
+    it('gets the component\'s viewModel' +
+      'by registered component\'s name' +
+      ' and viewModel is defined as Can Map Object', function () {
+      var componentFoo = function () {};
+      var viewModel = can.Map.extend({a: 1, b: 2});
+      componentFoo.prototype.viewModel = viewModel;
+      Components._registry.foo = componentFoo;
+      // create new Instance
+      viewModel = new viewModel();
+      expect(Components.getViewModel('foo').attr().a).toBe(viewModel.attr('a'));
+      expect(Components.getViewModel('foo').attr().b).toBe(viewModel.attr('b'));
+    });
+
+    it('raises an error if a component does not exist', function () {
+      delete Components._registry.foo;
+
+      expect(function () {
+        Components.getViewModel('foo');
+      })
+      .toThrow(new Error('Component not found: foo'));
+    });
+  });
+
   describe('casting default values', function () {
     var componentConfig;
     var template;
@@ -184,7 +219,7 @@ describe('GGRC component registry', function () {
             'default': false
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar />');
         frag = template();
@@ -200,7 +235,7 @@ describe('GGRC component registry', function () {
             'default': false
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar has-value="hasValue" />');
         frag = template({
@@ -234,7 +269,7 @@ describe('GGRC component registry', function () {
             'default': 42
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar has-value="1" />');
         frag = template();
@@ -250,7 +285,7 @@ describe('GGRC component registry', function () {
             'default': 42
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar />');
         frag = template();
@@ -266,7 +301,7 @@ describe('GGRC component registry', function () {
             'default': 42
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar has-value="hasValue" />');
         frag = template({
@@ -299,7 +334,7 @@ describe('GGRC component registry', function () {
             'default': 'Hello'
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar has-value="World" />');
         frag = template();
@@ -315,7 +350,7 @@ describe('GGRC component registry', function () {
             'default': 'Hello'
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar />');
         frag = template();
@@ -331,7 +366,7 @@ describe('GGRC component registry', function () {
             'default': 'Hello'
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar has-value="hasValue" />');
         frag = template({
@@ -350,7 +385,7 @@ describe('GGRC component registry', function () {
             type: 'function'
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar can-has-value="hasValue" />');
         frag = template({
@@ -372,7 +407,7 @@ describe('GGRC component registry', function () {
             }
           }
         };
-        Components('fakeComponent', componentConfig);
+        Components('fakeComponent', componentConfig, true);
 
         template = can.view.mustache('<foo-bar />');
         frag = template();
@@ -380,6 +415,21 @@ describe('GGRC component registry', function () {
         frag = $(frag);
         control = frag.find('foo-bar').control();
         expect(control.scope.attr('hasValue')()).toBe('Hi');
+      });
+    });
+    describe('for @ variables', function () {
+      it('should get value from element', function () {
+        componentConfig.scope = {
+          hello: '@'
+        };
+        Components('fakeComponent', componentConfig);
+
+        template = can.view.mustache('<foo-bar hello="World" />');
+        frag = template();
+
+        frag = $(frag);
+        control = frag.find('foo-bar').control();
+        expect(control.scope.attr('hello')).toBe('World');
       });
     });
   });

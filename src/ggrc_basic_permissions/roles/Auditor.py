@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 scope = "Audit"
@@ -9,7 +9,6 @@ description = """
 permissions = {
     "read": [
         "Audit",
-        "Request",
         "Assessment",
         "Issue",
         "Meeting",
@@ -23,7 +22,6 @@ permissions = {
         "Context",
     ],
     "create": [
-        "Request",
         "Assessment",
         "Issue",
         "Relationship",
@@ -33,12 +31,11 @@ permissions = {
         "__GGRC_ALL__"
     ],
     "update": [
-        "Request",
         "Assessment",
         "Issue",
+        "Audit",
     ],
     "delete": [
-        "Request",
         "Assessment",
         "Issue"
     ],

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module containing Cycle tasks.
@@ -9,8 +9,8 @@ from sqlalchemy.ext.associationproxy import association_proxy
 
 from ggrc import db
 from ggrc.models.computed_property import computed_property
-from ggrc.models.mixins import Base
 from ggrc.models.mixins import Described
+from ggrc.models.mixins import Notifiable
 from ggrc.models.mixins import Slugged
 from ggrc.models.mixins import Stateful
 from ggrc.models.mixins import Timeboxed
@@ -24,12 +24,21 @@ from ggrc_workflows.models.cycle_task_group import CycleTaskGroup
 
 
 class CycleTaskGroupObjectTask(
-        WithContact, Stateful, Slugged, Timeboxed, Relatable,
-        Described, Titled, Base, db.Model):
+        WithContact, Stateful, Timeboxed, Relatable, Notifiable,
+        Described, Titled, Slugged, db.Model):
   """Cycle task model
   """
   __tablename__ = 'cycle_task_group_object_tasks'
+
+  readable_name_alias = 'cycle task'
+
   _title_uniqueness = False
+
+  IMPORTABLE_FIELDS = (
+      'slug', 'title', 'description', 'start_date',
+      'end_date', 'finished_date', 'verified_date',
+      'contact',
+  )
 
   @classmethod
   def generate_slug_prefix_for(cls, obj):
@@ -37,6 +46,10 @@ class CycleTaskGroupObjectTask(
 
   VALID_STATES = (None, 'InProgress', 'Assigned',
                   'Finished', 'Declined', 'Verified')
+
+  # Note: this statuses are used in utils/query_helpers to filter out the tasks
+  # that should be visible on My Tasks pages.
+  ACTIVE_STATES = ("Assigned", "InProgress", "Finished", "Declined")
 
   cycle_id = db.Column(
       db.Integer,
@@ -57,9 +70,9 @@ class CycleTaskGroupObjectTask(
   task_type = db.Column(
       db.String(length=250), nullable=False)
   response_options = db.Column(
-      JsonType(), nullable=False, default='[]')
+      JsonType(), nullable=False, default=[])
   selected_response_options = db.Column(
-      JsonType(), nullable=False, default='[]')
+      JsonType(), nullable=False, default=[])
 
   sort_index = db.Column(
       db.String(length=250), default="", nullable=False)
@@ -125,6 +138,13 @@ class CycleTaskGroupObjectTask(
           "display_name": "Task Type",
           "mandatory": True,
       },
+      "status": {
+          "display_name": "State",
+          "mandatory": False,
+          "description": "Options are:\n{}".
+                          format('\n'.join((item for item in VALID_STATES
+                                            if item)))
+      }
   }
 
   @computed_property

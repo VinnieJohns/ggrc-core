@@ -1,9 +1,9 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-(function (namespace, $) {
+(function ($, can, CMS, GGRC) {
   var $area = $('.area').first();
   var defaults;
   var extraPageOptions;
@@ -32,7 +32,7 @@
 
   var initWidgets = function () {
     // Ensure each extension has had a chance to initialize widgets
-    _.each(GGRC.extensions, function (extension) {
+    can.each(GGRC.extensions, function (extension) {
       if (extension.init_widgets) {
         extension.init_widgets();
       }
@@ -42,7 +42,7 @@
   var adminListDescriptors = {
     people: {
       model: CMS.Models.Person,
-      roles: new can.Observe.List(),
+      roles: new can.List(),
       init: function () {
         var self = this;
         CMS.Models.Role
@@ -186,6 +186,15 @@
       isAssessmentsView || isObjectBrowser) {
     instance = GGRC.page_instance();
     modelName = instance.constructor.shortName;
+
+    if (GGRC.tree_view.base_widgets_by_type[modelName]) {
+      GGRC.Utils.CurrentPage
+        .initCounts(GGRC.tree_view.base_widgets_by_type[modelName], {
+          type: instance.type,
+          id: instance.id
+        });
+    }
+
     initWidgets();
 
     widgetList = GGRC.WidgetList.get_widget_list_for(modelName);
@@ -203,11 +212,12 @@
       defaults.splice(defaults.indexOf('task'), 1);
     }
 
-    $area.cms_controllers_page_object($.extend({
+    $area.cms_controllers_page_object(can.extend({
       widget_descriptors: widgetList,
       default_widgets: defaults || GGRC.default_widgets || [],
       instance: GGRC.page_instance(),
       header_view: GGRC.mustache_path + '/base_objects/page_header.mustache',
+      GGRC: GGRC,  // make the global object available in Mustache templates
       page_title: function (controller) {
         return controller.options.instance.title;
       },
@@ -250,4 +260,4 @@
   $(window).on('load', function () {
     $('html').removeClass('no-js');
   });
-})(this, jQuery);
+})(window.can.$, window.can, window.CMS, window.GGRC);

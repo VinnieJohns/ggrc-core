@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import inspect
@@ -6,11 +6,12 @@ import sqlalchemy as sa
 
 from ggrc import db
 from ggrc import settings
+from ggrc.models import inflector
 from ggrc.models.reflection import SanitizeHtmlInfo
 from ggrc.models.all_models import *  # noqa
 from ggrc.utils import html_cleaner
 
-"""All gGRC model objects and associated utilities."""
+"""All GGRC model objects and associated utilities."""
 
 
 def create_db_with_create_all():
@@ -78,7 +79,8 @@ def drop_db(use_migrations=False, quiet=False):
 
 def init_models(app):
   from ggrc.models.all_models import all_models  # noqa
-  [model._inflector for model in all_models]
+  for model in all_models:
+    inflector.register_inflections(model._inflector)
 
 
 def init_hooks():
@@ -87,7 +89,7 @@ def init_hooks():
 
 
 def init_all_models(app):
-  """Register all gGRC models services with the Flask application ``app``."""
+  """Register all GGRC models services with the Flask application ``app``."""
 
   from ggrc.extensions import get_extension_modules
 

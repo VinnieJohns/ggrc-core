@@ -1,5 +1,5 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
@@ -13,7 +13,7 @@
             <div class="row-fluid">
               <div class="span11">
                 <div class="tree-title-area">
-                  {{firstexist instance.name instance.title instance.link instance.description}}
+                  {{firstexist instance.name instance.email instance.title instance.link instance.description}}
                   <span class="url-link">
                     {{firstexist instance.email instance.link}}
                   </span>
@@ -24,9 +24,7 @@
                 <div class="object-check" align="left">
 
                   <mapper-checkbox
-                    {{#is_allowed_to_map selected_object instance}}
-                      allowed-to-map="true"
-                    {{/is_allowed_to_map}}
+                    {{#is_allowed_to_map selected_object instance}}allowed-to-map="true"{{/is_allowed_to_map}}
                     appended="appended"
                     instance="instance"
                     instance_id="{{instance.id}}"

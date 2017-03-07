@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for cycle task group model.
@@ -7,7 +7,6 @@
 from sqlalchemy import orm
 
 from ggrc import db
-from ggrc.models.mixins import Base
 from ggrc.models.mixins import Described
 from ggrc.models.mixins import Slugged
 from ggrc.models.mixins import Stateful
@@ -17,8 +16,8 @@ from ggrc.models.mixins import WithContact
 from ggrc_workflows.models.cycle import Cycle
 
 
-class CycleTaskGroup(WithContact, Stateful, Slugged, Timeboxed, Described,
-                     Titled, Base, db.Model):
+class CycleTaskGroup(WithContact, Stateful, Timeboxed, Described,
+                     Titled, Slugged, db.Model):
   """Cycle Task Group model.
   """
   __tablename__ = 'cycle_task_groups'
@@ -86,8 +85,7 @@ class CycleTaskGroup(WithContact, Stateful, Slugged, Timeboxed, Described,
     Make sure we load all cycle task group relevant data in a single query.
 
     Returns:
-      a query object with cycle_task_group_tasks and cycle_task_group_objects
-      added to joined load options.
+      a query object with cycle_task_group_tasks added to joined load options.
     """
     query = super(CycleTaskGroup, cls).eager_query()
     return query.options(

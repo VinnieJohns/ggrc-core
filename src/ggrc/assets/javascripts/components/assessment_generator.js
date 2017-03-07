@@ -1,16 +1,18 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-(function (can, $) {
+(function (_, can, $, GGRC, CMS) {
   'use strict';
 
   GGRC.Components('assessmentGeneratorButton', {
     tag: 'assessment-generator-button',
-    template: '{{{> /static/mustache/base_objects/generate_assessments_button.mustache}}}',
+    template: '{{{> /static/mustache/base_objects/' +
+    'generate_assessments_button.mustache}}}',
     scope: {
-      audit: null
+      audit: null,
+      button: '@'
     },
     events: {
       'a click': function (el, ev) {
@@ -21,17 +23,17 @@
           type: 'Control',
           'join-object-id': instance.id,
           'join-mapping': 'program_controls',
-          getList: true,
           useTemplates: true,
           assessmentGenerator: true,
           relevantTo: [{
+            readOnly: true,
             type: instance.type,
             id: instance.id
           }],
           template: {
             title: '/static/mustache/assessments/generator_title.mustache',
             submitButton: 'Generate Assessments',
-            count: 'assessment(s) will be generated'
+            count: 'assessment(s) will be generated for each selection'
           },
           callback: this.generateAssessments.bind(this)
         });
@@ -108,15 +110,19 @@
       generateModel: function (object, template) {
         var assessmentTemplate = CMS.Models.AssessmentTemplate.findInCacheById(
           template);
-        var title = object.title + ' assessment for ' + this.scope.audit.title;
+        var title = 'Generated Assessment for ' + this.scope.audit.title;
         var data = {
           _generated: true,
           audit: this.scope.audit,
-          object: object.stub(),
+          // Provide actual Snapshot Object for Assessment
+          object: {
+            id: object.id,
+            type: 'Snapshot',
+            href: object.selfLink
+          },
           context: this.scope.audit.context,
           template: assessmentTemplate && assessmentTemplate.stub(),
-          title: title,
-          owners: [CMS.Models.Person.findInCacheById(GGRC.current_user.id)]
+          title: title
         };
 
         if (assessmentTemplate) {
@@ -167,4 +173,4 @@
       }
     }
   });
-})(window.can, window.can.$);
+})(window._, window.can, window.can.$, window.GGRC, window.CMS);

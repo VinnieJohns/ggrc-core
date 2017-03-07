@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """A module containing the workflow TaskGroupObject model."""
@@ -7,12 +7,12 @@
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from ggrc import db
-from ggrc.models.mixins import Mapping
+from ggrc.models.mixins import Base
 from ggrc.models.mixins import Timeboxed
 from ggrc.models.reflection import PublishOnly
 
 
-class TaskGroupObject(Timeboxed, Mapping, db.Model):
+class TaskGroupObject(Timeboxed, Base, db.Model):
   """Workflow TaskGroupObject model."""
 
   __tablename__ = 'task_group_objects'

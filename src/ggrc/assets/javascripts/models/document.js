@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -46,7 +46,7 @@ can.Model.Cacheable("CMS.Models.Document", {
     }
   , tree_view_options: {
     show_view: GGRC.mustache_path + "/documents/tree.mustache"
-    , footer_view : GGRC.mustache_path + "/documents/tree_footer.mustache"
+    , footer_view : GGRC.mustache_path + "/base_objects/tree_footer.mustache"
     , add_item_view : GGRC.mustache_path + "/documents/tree_add_item.mustache"
 
   }

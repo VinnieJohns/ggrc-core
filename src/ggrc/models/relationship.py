@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import functools
@@ -9,14 +9,13 @@ from sqlalchemy import or_, and_
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm.collections import attribute_mapped_collection
-from werkzeug.exceptions import BadRequest
 
 from ggrc import db
 from ggrc.models.mixins import Identifiable
-from ggrc.models.mixins import Mapping
+from ggrc.models.mixins import Base
 
 
-class Relationship(Mapping, db.Model):
+class Relationship(Base, db.Model):
   __tablename__ = 'relationships'
   source_id = db.Column(db.Integer, nullable=False)
   source_type = db.Column(db.String, nullable=False)
@@ -52,8 +51,8 @@ class Relationship(Mapping, db.Model):
 
   @source.setter
   def source(self, value):
-    self.source_id = value.id if value is not None else None
-    self.source_type = value.__class__.__name__ if value is not None else None
+    self.source_id = getattr(value, 'id', None)
+    self.source_type = getattr(value, 'type', None)
     return setattr(self, self.source_attr, value)
 
   @property
@@ -66,9 +65,8 @@ class Relationship(Mapping, db.Model):
 
   @destination.setter
   def destination(self, value):
-    self.destination_id = value.id if value is not None else None
-    self.destination_type = value.__class__.__name__ if value is not None \
-        else None
+    self.destination_id = getattr(value, 'id', None)
+    self.destination_type = getattr(value, 'type', None)
     return setattr(self, self.destination_attr, value)
 
   @staticmethod
@@ -241,7 +239,7 @@ class RelationshipAttr(Identifiable, db.Model):
       if validated_value is not None:
         attr.attr_value = validated_value
         return attr
-    raise BadRequest("Invalid attribute {}: {}".format(attr_name, attr_value))
+    raise ValueError("Invalid attribute {}: {}".format(attr_name, attr_value))
 
   @classmethod
   def _get_validators(cls, obj):

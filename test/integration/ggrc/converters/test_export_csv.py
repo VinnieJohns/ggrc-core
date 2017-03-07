@@ -1,10 +1,9 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from os.path import abspath, dirname, join
 from flask.json import dumps
 
-from ggrc.app import app
 from ggrc.converters import get_importables
 from ggrc.models.reflection import AttributeInfo
 from integration.ggrc import TestCase
@@ -19,7 +18,7 @@ class TestExportEmptyTemplate(TestCase):
     self.client.get("/login")
     self.headers = {
         'Content-Type': 'application/json',
-        "X-Requested-By": "gGRC",
+        "X-Requested-By": "GGRC",
         "X-export-view": "blocks",
     }
 
@@ -57,25 +56,13 @@ class TestExportSingleObject(TestCase):
   @classmethod
   def setUpClass(cls):
     TestCase.clear_data()
-    cls.tc = app.test_client()
-    cls.tc.get("/login")
-    cls.import_file("data_for_export_testing.csv")
-
-  @classmethod
-  def import_file(cls, filename, dry_run=False):
-    data = {"file": (open(join(CSV_DIR, filename)), filename)}
-    headers = {
-        "X-test-only": "true" if dry_run else "false",
-        "X-requested-by": "gGRC",
-    }
-    cls.tc.post("/_service/import_csv",
-                data=data, headers=headers)
+    cls._import_file("data_for_export_testing.csv")
 
   def setUp(self):
     self.client.get("/login")
     self.headers = {
         'Content-Type': 'application/json',
-        "X-Requested-By": "gGRC",
+        "X-Requested-By": "GGRC",
         "X-export-view": "blocks",
     }
 
@@ -358,25 +345,13 @@ class TestExportMultipleObjects(TestCase):
   @classmethod
   def setUpClass(cls):
     TestCase.clear_data()
-    cls.tc = app.test_client()
-    cls.tc.get("/login")
-    cls.import_file("data_for_export_testing.csv")
-
-  @classmethod
-  def import_file(cls, filename, dry_run=False):
-    data = {"file": (open(join(CSV_DIR, filename)), filename)}
-    headers = {
-        "X-test-only": "true" if dry_run else "false",
-        "X-requested-by": "gGRC",
-    }
-    cls.tc.post("/_service/import_csv",
-                data=data, headers=headers)
+    cls._import_file("data_for_export_testing.csv")
 
   def setUp(self):
     self.client.get("/login")
     self.headers = {
         'Content-Type': 'application/json',
-        "X-Requested-By": "gGRC",
+        "X-Requested-By": "GGRC",
         "X-export-view": "blocks",
     }
 

@@ -1,13 +1,13 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 (function (can, $) {
   'use strict';
 
-  GGRC.Components('sortBySortIndex', {
-    tag: 'sort-by-sort-index',
+  GGRC.Components('tasksSortList', {
+    tag: 'tasks-sort-list',
     scope: {
       sorted: null,
       mapping: null,
@@ -16,33 +16,92 @@
 
     init: function () {
       var mapping = this.scope.attr('mapping');
-      var sort = function () {
-        var arr = _.toArray(mapping);
-        var last;
-        var lastIndex;
-        arr.sort(function (a, b) {
-          a = a.instance.sort_index;
-          b = b.instance.sort_index;
-          if (a === b) {
-            return 0;
-          }
-          return GGRC.Math.string_less_than(a, b) ? -1 : 1;
-        });
-        this.scope.attr('sorted', arr);
-        last = arr[arr.length - 1];
-        lastIndex = (last !== -Infinity && last) ?
-            last.instance.sort_index :
-            '0';
-        this.scope.attr('next_sort_index',
-            GGRC.Math.string_half(
-                GGRC.Math.string_add(
-                    Number.MAX_SAFE_INTEGER.toString(), lastIndex
-                )
-            )
-        );
-      }.bind(this);
-      sort();
-      mapping.bind('change', sort);
+      this.sort(mapping);
+      mapping.bind('change', _.bind(this.sort, this, mapping));
+    },
+
+    /**
+     * Sort a list of tasks and update the next sort index.
+     *
+     * @param {can.List} mapping - a mapping representing a list of Tasks
+     *   mapped to the "parent" object
+     */
+    sort: function (mapping) {
+      var arr = _.toArray(mapping);
+      var last;
+      var lastIndex;
+
+      arr.sort(this.compareTasks.bind(this));
+      this.scope.attr('sorted', arr);
+
+      last = arr[arr.length - 1];
+      lastIndex = (last !== -Infinity && last) ?
+          last.instance.sort_index :
+          '0';
+      this.scope.attr('next_sort_index',
+          GGRC.Math.string_half(
+              GGRC.Math.string_add(
+                  Number.MAX_SAFE_INTEGER.toString(), lastIndex
+              )
+          )
+      );
+    },
+
+    /**
+     * Compare two Task definitions for sorting purposes.
+     *
+     * @param {CMS.Models.TaskGroupTask} a - the first Task to compare
+     * @param {CMS.Models.TaskGroupTask} b - the second Task to compare
+     *
+     * @return {Number} - a number less than 0 if "a" should come first,
+     *   greater than 0 if "b" should come first, or exactly zero if "a"
+     *   and "b" are considered equal to each other.
+     */
+    compareTasks: function (a, b) {
+      var ad = this.getTaskDate(a.instance, 'start');
+      var bd = this.getTaskDate(b.instance, 'start');
+      var result = ad - bd;
+
+      if (!result) {  // if same start dates
+        ad = this.getTaskDate(a.instance, 'end');
+        bd = this.getTaskDate(b.instance, 'end');
+        result = ad - bd;
+      }
+      return result;
+    },
+
+    /**
+     * Get the date on which the given task starts or ends.
+
+     * If the task does not have that date set, compute it by using a relative
+     * offset (as defined by the task) in the current year. All time
+     * components are set to zero in such case.
+     *
+     * @param {CMS.Models.TaskGroupTask} instance - the Task to read the
+     *   date from
+     * @param {string} type - which Task date to read (either "start" or "end")
+     *
+     * @return {moment} - the date read from the task
+     */
+    getTaskDate: function (instance, type) {
+      var month = instance['relative_' + type + '_month'];
+      var day = instance['relative_' + type + '_day'];
+
+      var value = instance[type + '_date'];
+      if (value) {
+        return moment.utc(value);
+      }
+
+      value = moment.utc().set({hour: 0, minute: 0, second: 0, millisecond: 0});
+
+      if (month) {
+        value.month(month - 1);  // expects a zero-based month value
+      }
+
+      day = Math.min(day, value.daysInMonth());  // prevent days overflow
+      value.date(day);
+
+      return value;
     },
 
     events: {

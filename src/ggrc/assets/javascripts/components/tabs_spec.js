@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -40,23 +40,25 @@ describe('GGRC.Components.tabPanel', function () {
   var scope;
 
   beforeAll(function () {
-    instance = $(can.view.mustache('<tab-panel></tab-panel>')().children[0]);
+    instance = $(
+      can.view.mustache('<tab-panel></tab-panel>')()
+    ).find('tab-panel');
     scope = instance.scope();
   });
 
   it('doesn\'t switch tabs when internal scope changes', function () {
-    scope.attr("panels", new can.List([
+    scope.attr('panels', new can.List([
       new can.Map(),
       new can.Map({
         panel: new can.Map()
       })
     ]));
-    scope.attr("active", true);
+    scope.attr('active', true);
 
-    scope.attr("panels.0.foo", "bar");
+    scope.attr('panels.0.foo', 'bar');
     expect(scope.active).toEqual(true);
 
-    scope.attr("panels.1.panel.active", true);
+    scope.attr('panels.1.panel.active', true);
     expect(scope.active).toEqual(false);
   });
 });

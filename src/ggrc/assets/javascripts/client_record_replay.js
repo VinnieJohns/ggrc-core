@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -21,8 +21,8 @@
  */
 GGRC.RequestStore = function() {
   // From https://www.artandlogic.com/blog/2013/06/ajax-caching-transports-compatible-with-jquery-deferred/
-  var storage = (typeof(sessionStorage) == undefined) ?
-      (typeof(localStorage) == undefined) ? {
+  var storage = (typeof sessionStorage === 'undefined') ?
+      (typeof localStorage === 'undefined') ? {
           getItem: function(key){
               return this.store[key];
           },

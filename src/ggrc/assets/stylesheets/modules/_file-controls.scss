@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -7,7 +7,6 @@
   @include border-radius(11px 0 0 11px);
   @include box-shadow(-1px 0 1px rgba(0,0,0, .2));
   @include opacity(0);
-  @include transition(opacity .2s ease, left .2s ease);
   position: absolute;
   top: -2px;
   left: 0;
@@ -18,7 +17,6 @@
   min-width: 20px;
   i {
     @include opacity(.6);
-    @include transition(opacity .2s ease);
   }
   a {
     width: auto !important;

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -17,7 +17,7 @@ class TestCreator(TestCase):
   """ TestCreator """
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestCreator, self).setUp()
     self.generator = Generator()
     self.api = Api()
     self.object_generator = ObjectGenerator()
@@ -162,7 +162,7 @@ class TestCreator(TestCase):
     self.assertEqual(admin_count, creator_count)
 
   def test_creator_cannot_be_owner(self):
-    """Test if creater cannot become owner of the object he has not created"""
+    """Test if creator cannot become owner of the object he has not created"""
     self.api.set_user(self.users['admin'])
     _, obj = self.generator.generate(all_models.Regulation, "regulation", {
         "regulation": {"title": "Test regulation", "context": None},
@@ -242,4 +242,4 @@ class TestCreator(TestCase):
 
     self.api.set_user(self.users["creator"])
     check(obj_1, 0)
-    check(obj_2, 1)
+    check(obj_2, 2)

@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -67,7 +67,8 @@
           title: value,
           context: this.scope.parent_instance.context || new CMS.Models.Context({
             id: null
-          })
+          }),
+          owners: [{type: "Person", id: GGRC.current_user.id}],
         });
         return dfd.save();
       }
@@ -84,13 +85,14 @@
           this.scope.attributes.attr($(el).attr("name"), $(el).val());
         }.bind(this));
       },
-      "a[data-toggle=submit]:not(.disabled) click": function (el, ev) {
+      'a[data-toggle=submit]:not(.disabled):not([disabled]) click': function (el, ev) {
         var scope = this.scope;
         var join_model_class;
         var join_object;
         var quick_create;
         var created_dfd;
         var verify_dfd = $.Deferred();
+        scope.attr('disabled', true);
 
         if (scope.attr("verify_event")) {
           GGRC.Controllers.Modals.confirm({
@@ -117,7 +119,10 @@
                   })
                   .done(function (data) {
                     this.scope.attr('instance', data);
-                  }.bind(this));
+                  }.bind(this))
+                  .always(function () {
+                    scope.attr('disabled', false);
+                  });
               }
             }
           }
@@ -178,7 +183,10 @@
               }),
               el
               );
-          }.bind(this));
+          }.bind(this))
+          .always(function () {
+            scope.attr('disabled', false);
+          });
         }.bind(this));
       },
       // this works like autocomplete_select on all modal forms and
@@ -287,6 +295,6 @@
           });
         };
       }
-    },
-  });
+    }
+  }, true);
 })(window.can, window.can.$);

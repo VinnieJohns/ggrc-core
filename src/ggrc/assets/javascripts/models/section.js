@@ -1,11 +1,8 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-//= require can.jquery-all
-//= require controls/control
-//= require models/cacheable
 
 // this model doesn't exist anymore, can we get rid of it?
 can.Model.Cacheable('CMS.Models.Section', {
@@ -25,15 +22,13 @@ can.Model.Cacheable('CMS.Models.Section', {
   update: 'PUT /api/sections/{id}',
   destroy: 'DELETE /api/sections/{id}',
   is_custom_attributable: true,
-  mixins: ['ownable', 'contactable', 'unique_title'],
+  mixins: ['ownable', 'contactable', 'unique_title', 'ca_update'],
   attributes: {
     context: 'CMS.Models.Context.stub',
     owners: 'CMS.Models.Person.stubs',
     modified_by: 'CMS.Models.Person.stub',
     object_people: 'CMS.Models.ObjectPerson.stubs',
     people: 'CMS.Models.Person.stubs',
-    object_documents: 'CMS.Models.ObjectDocument.stubs',
-    documents: 'CMS.Models.Document.stubs',
     directive: 'CMS.Models.get_stub',
     children: 'CMS.Models.get_stubs',
     directive_sections: 'CMS.Models.DirectiveSection.stubs',
@@ -43,12 +38,13 @@ can.Model.Cacheable('CMS.Models.Section', {
   },
   tree_view_options: {
     show_view: '/static/mustache/sections/tree.mustache',
-    footer_view: GGRC.mustache_path + '/sections/tree_footer.mustache',
+    attr_view: '/static/mustache/sections/tree-item-attr.mustache',
+    footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
     attr_list: can.Model.Cacheable.attr_list.concat([
       {attr_title: 'URL', attr_name: 'url'},
       {attr_title: 'Reference URL', attr_name: 'reference_url'}
     ]),
-    add_item_view: GGRC.mustache_path + '/sections/tree_add_item.mustache',
+    add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache',
     child_options: [{
       model: can.Model.Cacheable,
       mapping: 'related_objects',
@@ -64,13 +60,15 @@ can.Model.Cacheable('CMS.Models.Section', {
         title_plural: 'Controls',
         mapping: 'controls',
         draw_children: false,
-        footer_view: GGRC.mustache_path + '/controls/tree_footer.mustache',
-        add_item_view: GGRC.mustache_path + '/controls/tree_add_item.mustache'
+        footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+        add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache'
       }]
     }]
   },
-  statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-    'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+  defaults: {
+    status: 'Draft'
+  },
+  statuses: ['Draft', 'Deprecated', 'Active'],
   init: function () {
     this._super.apply(this, arguments);
     this.validateNonBlank('title');
@@ -95,15 +93,13 @@ can.Model.Cacheable('CMS.Models.Clause', {
   update: 'PUT /api/clauses/{id}',
   destroy: 'DELETE /api/clauses/{id}',
   is_custom_attributable: true,
-  mixins: ['ownable', 'contactable', 'unique_title'],
+  mixins: ['ownable', 'contactable', 'unique_title', 'ca_update'],
   attributes: {
     context: 'CMS.Models.Context.stub',
     owners: 'CMS.Models.Person.stubs',
     modified_by: 'CMS.Models.Person.stub',
     object_people: 'CMS.Models.ObjectPerson.stubs',
     people: 'CMS.Models.Person.stubs',
-    object_documents: 'CMS.Models.ObjectDocument.stubs',
-    documents: 'CMS.Models.Document.stubs',
     directive: 'CMS.Models.get_stub',
     children: 'CMS.Models.get_stubs',
     directive_sections: 'CMS.Models.DirectiveSection.stubs',
@@ -113,12 +109,13 @@ can.Model.Cacheable('CMS.Models.Clause', {
   },
   tree_view_options: {
     show_view: '/static/mustache/sections/tree.mustache',
-    footer_view: GGRC.mustache_path + '/sections/tree_footer.mustache',
+    attr_view: '/static/mustache/sections/tree-item-attr.mustache',
+    footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
     attr_list: can.Model.Cacheable.attr_list.concat([
       {attr_title: 'URL', attr_name: 'url'},
       {attr_title: 'Reference URL', attr_name: 'reference_url'}
     ]),
-    add_item_view: GGRC.mustache_path + '/sections/tree_add_item.mustache',
+    add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache',
     child_options: [{
       model: can.Model.Cacheable,
       mapping: 'related_objects', // 'related_and_able_objects'
@@ -134,13 +131,15 @@ can.Model.Cacheable('CMS.Models.Clause', {
         title_plural: 'Controls',
         mapping: 'controls',
         draw_children: false,
-        footer_view: GGRC.mustache_path + '/controls/tree_footer.mustache',
-        add_item_view: GGRC.mustache_path + '/controls/tree_add_item.mustache'
+        footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+        add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache'
       }]
     }]
   },
-  statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-    'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+  defaults: {
+    status: 'Draft'
+  },
+  statuses: ['Draft', 'Deprecated', 'Active'],
   init: function () {
     this._super.apply(this, arguments);
     this.validateNonBlank('title');

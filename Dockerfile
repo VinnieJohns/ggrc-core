@@ -7,6 +7,7 @@ RUN rm /usr/sbin/policy-rc.d \
     curl \
     fabric \
     git-core \
+    libfontconfig \
     make \
     mysql-server \
     nodejs \
@@ -15,7 +16,6 @@ RUN rm /usr/sbin/policy-rc.d \
     python-pip \
     python-pycurl \
     python-virtualenv \
-    sqlite3 \
     unzip \
     vim \
     wget \

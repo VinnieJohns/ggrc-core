@@ -1,11 +1,11 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
 (function(can, $) {
 
-  can.Component.extend({
+  GGRC.Components('csvImportWidget', {
     tag: "csv-import",
     template: "<content></content>",
     requestData: null,
@@ -18,11 +18,48 @@
       states: function () {
         var state = this.attr("state") || "select",
             states = {
-              select: {class: "btn-success", text: "Choose CSV file to import"},
-              analyzing: {class: "btn-draft", text: "Analyzing", isDisabled: true},
-              import: {class: "btn-primary", text: "Import data"},
-              importing: {class: "btn-draft", text: "Importing", isDisabled: true},
-              success: {class: "btn-success", text: "<i class=\"fa fa-check-square-o white\"></i> Import successful"}
+              select: {
+                class: "btn-success",
+                text: "Choose CSV file to import"
+              },
+              analyzing: {
+                class: "btn-draft",
+                showSpinner: true,
+                isDisabled: true,
+                text: "Analyzing"
+              },
+              import: {
+                class: "btn-primary",
+                text: "Import data",
+                isDisabled: function () {
+                  var toImport = this.import;  // info on blocks to import
+                  var nonEmptyBlockExists;
+
+                  if (!toImport || toImport.length < 1) {
+                    return true;
+                  }
+
+                  // A non-empty block is a block containing at least one
+                  // line that is not ignored (due to errors, etc.).
+                  nonEmptyBlockExists = _.any(toImport, function (block) {
+                    return block.rows > block.ignored;
+                  });
+
+                  return !nonEmptyBlockExists;
+                }.bind(this)  // bind the scope object as context
+              },
+              importing: {
+                class: "btn-draft",
+                showSpinner: true,
+                isDisabled: true,
+                text: "Importing"
+              },
+              success: {
+                class: "btn-success",
+                isDisabled: true,
+                text: "<i class=\"fa fa-check-square-o white\">"+
+                  "</i> Import successful"
+              }
             };
 
         return _.extend(states[state], {state: state});
@@ -87,7 +124,7 @@
           processData: false,
           headers: {
             "X-test-only": "true",
-            "X-requested-by": "gGRC"
+            "X-requested-by": "GGRC"
           }
         };
 
@@ -95,16 +132,16 @@
         .done(function (data) {
           this.scope.attr("import", _.map(data, function (element) {
             element.data = [];
-            if (element.block_warnings.concat(element.row_warnings).length) {
-              element.data.push({
-                status: "warnings",
-                messages: element.block_warnings.concat(element.row_warnings)
-              });
-            }
             if (element.block_errors.concat(element.row_errors).length) {
               element.data.push({
                 status: "errors",
                 messages: element.block_errors.concat(element.row_errors)
+              });
+            }
+            if (element.block_warnings.concat(element.row_warnings).length) {
+              element.data.push({
+                status: "warnings",
+                messages: element.block_warnings.concat(element.row_warnings)
               });
             }
             return element;

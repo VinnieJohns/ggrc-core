@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
@@ -9,7 +9,7 @@ from os.path import abspath
 from os.path import dirname
 from os.path import join
 
-from integration.ggrc.converters import TestCase
+from integration.ggrc import TestCase
 
 from ggrc import db
 from ggrc.converters import errors
@@ -27,7 +27,7 @@ class TestWorkflowObjectsImport(TestCase):
   CSV_DIR = join(THIS_ABS_PATH, "test_csvs/")
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestWorkflowObjectsImport, self).setUp()
     self.client.get("/login")
 
   def test_full_good_import(self):
@@ -35,7 +35,7 @@ class TestWorkflowObjectsImport(TestCase):
     filename = "workflow_small_sheet.csv"
     response = self.import_file(filename)
 
-    self._check_response(response, {})
+    self._check_csv_response(response, {})
 
     self.assertEqual(1, Workflow.query.count())
     self.assertEqual(1, TaskGroup.query.count())
@@ -57,13 +57,13 @@ class TestWorkflowObjectsImport(TestCase):
 
     expected_errors = {
         "Workflow": {
-            "row_errors": [
+            "row_errors": {
                 errors.MISSING_VALUE_ERROR.format(
                     line=8, column_name="Manager")
-            ],
+            },
         }
     }
-    self._check_response(response, expected_errors)
+    self._check_csv_response(response, expected_errors)
 
   def test_import_task_date_format(self):
     """Test import of tasks for workflows
@@ -131,7 +131,7 @@ class TestWorkflowObjectsImport(TestCase):
     response = self.import_file(filename)
     expected_errors = {
         "Task Group Task": {
-            "row_warnings": set([
+            "row_warnings": {
                 errors.WRONG_REQUIRED_VALUE.format(
                     line=38, value="aaaa", column_name="Task Type"
                 ),
@@ -141,10 +141,10 @@ class TestWorkflowObjectsImport(TestCase):
                 errors.MISSING_VALUE_WARNING.format(
                     line=40, default_value="Rich Text", column_name="Task Type"
                 ),
-            ])
+            }
         },
     }
-    self._check_response(response, expected_errors)
+    self._check_csv_response(response, expected_errors)
 
     task_types = {
         "text": [
@@ -180,7 +180,7 @@ class TestWorkflowObjectsImport(TestCase):
 
     expected_errors = {
         "Task Group Task": {
-            "row_errors": set([
+            "row_errors": {
                 errors.INVALID_START_END_DATES.format(
                     line=4, start_date="Start date", end_date="End date"),
                 errors.INVALID_START_END_DATES.format(
@@ -189,10 +189,10 @@ class TestWorkflowObjectsImport(TestCase):
                     line=6, start_date="Start date", end_date="End date"),
                 errors.INVALID_START_END_DATES.format(
                     line=7, start_date="Start date", end_date="End date"),
-            ])
+            }
         },
     }
-    self._check_response(response, expected_errors)
+    self._check_csv_response(response, expected_errors)
 
   def test_malformed_task_dates(self):
     """Test import updates with malformed task dates.
@@ -209,15 +209,15 @@ class TestWorkflowObjectsImport(TestCase):
 
     expected_errors = {
         "Task Group Task": {
-            "row_warnings": set([
+            "row_warnings": {
                 errors.WRONG_DATE_FORMAT.format(line=15, column_name="Start"),
                 errors.WRONG_DATE_FORMAT.format(line=15, column_name="End"),
                 errors.WRONG_DATE_FORMAT.format(line=16, column_name="Start"),
                 errors.WRONG_DATE_FORMAT.format(line=17, column_name="End"),
-            ]),
+            },
         },
     }
-    self._check_response(response, expected_errors)
+    self._check_csv_response(response, expected_errors)
     task_slugs = ["t-1", "t-2", "t-3", "t-4"]
     tasks = db.session.query(TaskGroupTask).filter(
         TaskGroupTask.slug.in_(task_slugs)).all()

@@ -1,11 +1,11 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from ggrc.models import Audit
 from ggrc.models import Program
 from ggrc.models import Person
 from ggrc_basic_permissions.models import UserRole
-from integration.ggrc.converters import TestCase
+from integration.ggrc import TestCase
 
 
 class TestSpecialObjects(TestCase):
@@ -16,7 +16,7 @@ class TestSpecialObjects(TestCase):
   """
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestSpecialObjects, self).setUp()
     self.client.get("/login")
     pass
 

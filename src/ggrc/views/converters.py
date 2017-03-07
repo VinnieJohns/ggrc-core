@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Main view functions for import and export pages.
@@ -6,6 +6,8 @@
 This module handles all view related function to import and export pages
 including the import/export api endponts.
 """
+
+from logging import getLogger
 
 from flask import current_app
 from flask import request
@@ -23,6 +25,10 @@ from ggrc.login import login_required
 from ggrc.utils import benchmark
 
 
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
+
+
 def check_required_headers(required_headers):
   errors = []
   for header, valid_values in required_headers.items():
@@ -38,7 +44,7 @@ def check_required_headers(required_headers):
 def parse_export_request():
   """ Check if request contains all required fields """
   required_headers = {
-      "X-Requested-By": ["gGRC"],
+      "X-Requested-By": ["GGRC"],
       "Content-Type": ["application/json"],
       "X-export-view": ["blocks", "grid"],
   }
@@ -64,8 +70,8 @@ def handle_export_request():
     return current_app.make_response((csv_string, 200, headers))
   except BadQueryException as exception:
     raise BadRequest(exception.message)
-  except Exception as exception:
-    current_app.logger.exception(exception)
+  except:  # pylint: disable=bare-except
+    logger.exception("Export failed")
   raise BadRequest("Export failed due to server error.")
 
 
@@ -81,7 +87,7 @@ def check_import_file():
 def parse_import_request():
   """ Check if request contains all required fields """
   required_headers = {
-      "X-Requested-By": ["gGRC"],
+      "X-Requested-By": ["GGRC"],
       "X-test-only": ["true", "false"],
   }
   check_required_headers(required_headers)
@@ -100,8 +106,8 @@ def handle_import_request():
     response_json = json.dumps(response_data)
     headers = [("Content-Type", "application/json")]
     return current_app.make_response((response_json, 200, headers))
-  except Exception as exception:
-    current_app.logger.exception(exception)
+  except:  # pylint: disable=bare-except
+    logger.exception("Import failed")
   raise BadRequest("Import failed due to server error.")
 
 

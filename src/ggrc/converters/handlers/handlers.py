@@ -1,11 +1,12 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Generic handlers for imports and exports."""
 
 import re
-import traceback
+from logging import getLogger
+from datetime import date
 from dateutil.parser import parse
-from flask import current_app
+
 from sqlalchemy import and_
 from sqlalchemy import or_
 
@@ -14,7 +15,6 @@ from ggrc.automapper import AutomapperGenerator
 from ggrc.converters import errors
 from ggrc.converters import get_exportables
 from ggrc.login import get_current_user
-from ggrc.models import Audit
 from ggrc.models import CategoryBase
 from ggrc.models import Contract
 from ggrc.models import Assessment
@@ -25,12 +25,14 @@ from ggrc.models import Policy
 from ggrc.models import Program
 from ggrc.models import Regulation
 from ggrc.models import Relationship
-from ggrc.models import Request
 from ggrc.models import Standard
 from ggrc.models import all_models
 from ggrc.models.reflection import AttributeInfo
 from ggrc.rbac import permissions
 
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 MAPPING_PREFIX = "__mapping__:"
 CUSTOM_ATTR_PREFIX = "__custom__:"
@@ -47,6 +49,7 @@ class ColumnHandler(object):
     self.row_converter = row_converter
     self.key = key
     self.value = None
+    self.set_empty = False
     self.raw_value = options.get("raw_value", "").strip()
     self.validator = options.get("validator")
     self.mandatory = options.get("mandatory", False)
@@ -78,33 +81,41 @@ class ColumnHandler(object):
       self.row_converter.set_ignore()
 
   def set_value(self):
+    "set value for current culumn after parsing"
     self.value = self.parse_item()
 
   def get_value(self):
+    "get value for current column from instance"
     return getattr(self.row_converter.obj, self.key, self.value)
 
   def add_error(self, template, **kwargs):
+    "add error to current row"
     self.row_converter.add_error(template, **kwargs)
 
   def add_warning(self, template, **kwargs):
+    "add warning to current row"
     self.row_converter.add_warning(template, **kwargs)
 
   def parse_item(self):
+    "Parse item default handler"
     return self.raw_value
 
   def set_obj_attr(self):
-    if not self.value:
+    "Set attribute value to object"
+    if not self.set_empty and not self.value:
       return
     try:
-      setattr(self.row_converter.obj, self.key, self.value)
-    except:
+      if getattr(self.row_converter.obj, self.key, None) != self.value:
+        setattr(self.row_converter.obj, self.key, self.value)
+    except:  # pylint: disable=bare-except
       self.row_converter.add_error(errors.UNKNOWN_ERROR)
-      trace = traceback.format_exc()
-      error = "Import failed with:\nsetattr({}, {}, {})\n{}".format(
-          self.row_converter.obj, self.key, self.value, trace)
-      current_app.logger.error(error)
+      logger.exception(
+          "Import failed with setattr(%r, %r, %r)",
+          self.row_converter.obj, self.key, self.value,
+      )
 
   def get_default(self):
+    "Get default value to column"
     if callable(self.default):
       return self.default()
     return self.default
@@ -122,6 +133,10 @@ class DeleteColumnHandler(ColumnHandler):
   DELETE_WHITELIST = {"Relationship", "ObjectOwner", "ObjectPerson"}
   ALLOWED_VALUES = {"", "no", "false", "true", "yes", "force"}
   TRUE_VALUES = {"true", "yes", "force"}
+
+  def __init__(self, *args, **kwargs):
+    super(DeleteColumnHandler, self).__init__(*args, **kwargs)
+    self._allow_cascade = False
 
   def get_value(self):
     return ""
@@ -177,19 +192,28 @@ class StatusColumnHandler(ColumnHandler):
     value = self.raw_value.lower()
     status = self.state_mappings.get(value)
     if status is None:
-      if self.mandatory:
-        if len(self.valid_states) > 0:
-          self.add_warning(errors.WRONG_REQUIRED_VALUE,
-                           value=value[:20],
-                           column_name=self.display_name)
-          status = self.valid_states[0]
-        else:
-          self.add_error(errors.MISSING_VALUE_ERROR,
-                         column_name=self.display_name)
-          return
-      elif value != "":
-        self.add_warning(errors.WRONG_VALUE, column_name=self.display_name)
+      self.add_warning(
+          errors.WRONG_VALUE_DEFAULT, column_name=self.display_name)
+      status = self.row_converter.object_class.default_status()
     return status
+
+
+class DirectiveKindColumnHandler(ColumnHandler):
+  """
+    Handler for handling imports of Directive Kind/Type
+  """
+  def __init__(self, row_converter, key, **options):
+    self.key = "kind"
+    self.valid_states = row_converter.object_class.VALID_KINDS
+    self.state_mappings = set([str(s).lower() for s in self.valid_states])
+    super(DirectiveKindColumnHandler, self).__init__(row_converter,
+                                                     key, **options)
+
+  def parse_item(self):
+    value = self.raw_value.lower()
+    if value not in self.state_mappings:
+      self.add_warning(errors.WRONG_VALUE, column_name=self.display_name)
+    return value
 
 
 class UserColumnHandler(ColumnHandler):
@@ -264,12 +288,12 @@ class OwnerColumnHandler(UserColumnHandler):
       for person in self.value:
         if person not in self.row_converter.obj.owners:
           self.row_converter.obj.owners.append(person)
-    except:
+    except:  # pylint: disable=bare-except
       self.row_converter.add_error(errors.UNKNOWN_ERROR)
-      trace = traceback.format_exc()
-      error = "Import failed with:\nsetattr({}, {}, {})\n{}".format(
-          self.row_converter.obj, self.key, self.value, trace)
-      current_app.logger.error(error)
+      logger.exception(
+          "Import failed with setattr(%r, %r, %r)",
+          self.row_converter.obj, self.key, self.value,
+      )
 
   def get_value(self):
     emails = [owner.email for owner in self.row_converter.obj.owners]
@@ -294,15 +318,23 @@ class DateColumnHandler(ColumnHandler):
       self.add_error(errors.UNKNOWN_DATE_FORMAT, column_name=self.display_name)
       return
 
+    # TODO: change all importable date columns' type from 'DateTime'
+    # to 'Date' type. Remove if statement after it.
     try:
-      return parse(self.raw_value)
+      if not value:
+        return
+      parsed_value = parse(value)
+      if type(getattr(self.row_converter.obj, self.key, None)) is date:
+        return parsed_value.date()
+      else:
+        return parsed_value
     except:
       self.add_error(errors.WRONG_VALUE_ERROR, column_name=self.display_name)
 
   def get_value(self):
-    date = getattr(self.row_converter.obj, self.key)
-    if date:
-      return date.strftime("%m/%d/%Y")
+    value = getattr(self.row_converter.obj, self.key)
+    if value:
+      return value.strftime("%m/%d/%Y")
     return ""
 
 
@@ -330,12 +362,9 @@ class TextColumnHandler(ColumnHandler):
 
     return self.clean_whitespaces(self.raw_value)
 
-  def clean_whitespaces(self, value):
-    clean_value = re.sub(r'\s+', " ", value)
-    if clean_value != value:
-      self.add_warning(errors.WHITESPACE_WARNING,
-                       column_name=self.display_name)
-    return value
+  @staticmethod
+  def clean_whitespaces(value):
+    return re.sub(r'\s+', " ", value)
 
 
 class RequiredTextColumnHandler(TextColumnHandler):
@@ -355,6 +384,9 @@ class TextareaColumnHandler(ColumnHandler):
   def parse_item(self):
     """ Remove multiple spaces and new lines from text """
     if not self.raw_value:
+      if self.mandatory:
+        self.add_error(errors.MISSING_VALUE_ERROR,
+                       column_name=self.display_name)
       return ""
 
     return re.sub(r'\s+', " ", self.raw_value).strip()
@@ -366,6 +398,7 @@ class MappingColumnHandler(ColumnHandler):
 
   def __init__(self, row_converter, key, **options):
     self.key = key
+    self.allow = False  # allow mapping in audit scope
     exportable = get_exportables()
     self.attr_name = options.get("attr_name", "")
     self.mapping_object = exportable.get(self.attr_name)
@@ -375,7 +408,26 @@ class MappingColumnHandler(ColumnHandler):
     super(MappingColumnHandler, self).__init__(row_converter, key, **options)
 
   def parse_item(self):
-    """ Remove multiple spaces and new lines from text """
+    """Parse a list of slugs to be mapped.
+
+    Parse a new line separated list of slugs and check if they are valid
+    objects.
+
+    Returns:
+      list of objects. During dry_run, the list can contain a slug instead of
+      an actual object if that object will be generated in the current import.
+    """
+    # pylint: disable=protected-access
+    from ggrc.snapshotter.rules import Types
+    # TODO add a proper warning here!
+    # This is just a hack to prevent wrong mappings to assessments or issues.
+    if self.mapping_object.__name__ in Types.scoped | Types.parents and \
+       not self.allow:
+      if self.raw_value:
+        self.add_warning(errors.EXPORT_ONLY_WARNING,
+                         column_name=self.display_name)
+      return []
+
     class_ = self.mapping_object
     lines = set(self.raw_value.splitlines())
     slugs = set([slug.lower() for slug in lines if slug.strip()])
@@ -391,10 +443,14 @@ class MappingColumnHandler(ColumnHandler):
               object_type=class_._inflector.human_singular.title(),
               slug=slug,
           )
-      elif not (slug in self.new_slugs and self.dry_run):
+      elif slug in self.new_slugs and self.dry_run:
+        objects.append(slug)
+      else:
         self.add_warning(errors.UNKNOWN_OBJECT,
                          object_type=class_._inflector.human_singular.title(),
                          slug=slug)
+    if self.mandatory and not objects:
+      self.add_error(errors.MISSING_VALUE_ERROR, column_name=self.display_name)
     return objects
 
   def set_obj_attr(self):
@@ -450,20 +506,34 @@ class ConclusionColumnHandler(ColumnHandler):
 
 
 class OptionColumnHandler(ColumnHandler):
+  """Column handler for option fields.
+
+  This column handler is used only for option fields that have their values
+  stored in the Options table. Hardcoded options and boolean options should
+  not be handled by this class.
+  """
 
   def parse_item(self):
-    prefixed_key = "{}_{}".format(
-        self.row_converter.object_class._inflector.table_singular, self.key)
+    if not self.mandatory and self.raw_value in {"--", "---"}:
+      self.set_empty = True
+      return None
+    if not self.raw_value:
+      return None
+    table_singular = self.row_converter.object_class._inflector.table_singular
+    prefixed_key = "{}_{}".format(table_singular, self.key)
     item = Option.query.filter(
         and_(Option.title == self.raw_value.strip(),
              or_(Option.role == self.key,
                  Option.role == prefixed_key))).first()
+
+    if not item:
+      self.add_warning(errors.WRONG_VALUE, column_name=self.display_name)
     return item
 
   def get_value(self):
     option = getattr(self.row_converter.obj, self.key, None)
     if option is None:
-      return ""
+      return "--"
     if callable(option.title):
       return option.title()
     return option.title
@@ -557,29 +627,29 @@ class SectionDirectiveColumnHandler(MappingColumnHandler):
     return ""
 
 
-class ControlColumnHandler(MappingColumnHandler):
-
-  def insert_object(self):
-    if len(self.value) != 1:
-      self.add_error(errors.WRONG_VALUE_ERROR, column_name="Control")
-      return
-    self.row_converter.obj.control = self.value[0]
-    MappingColumnHandler.insert_object(self)
-
-
 class AuditColumnHandler(MappingColumnHandler):
+  """Handler for mandatory Audit mappings on Issues And Assessmnets."""
 
   def __init__(self, row_converter, key, **options):
     key = "{}audit".format(MAPPING_PREFIX)
     super(AuditColumnHandler, self).__init__(row_converter, key, **options)
+    self.allow = True
 
+  def set_obj_attr(self):
+    """Set values to be saved.
 
-class RequestAuditColumnHandler(ParentColumnHandler):
+    This saves the value for creating the relationships, and if the dry_run
+    flag is not set, it will also set the correct context to the parent object.
+    """
+    self.value = self.parse_item()
+    if not self.value:
+      # If there is no mandatory value, the parse item will already mark the
+      # error, so there is no need to do anything here.
+      return
 
-  def __init__(self, row_converter, key, **options):
-    self.parent = Audit
-    super(RequestAuditColumnHandler, self) \
-        .__init__(row_converter, "audit", **options)
+    context = getattr(self.value[0], "context_id", None)
+    if context:  # context is not available on dry_run
+      self.row_converter.obj.context_id = context
 
 
 class ObjectPersonColumnHandler(UserColumnHandler):
@@ -651,12 +721,20 @@ class PersonUnmappingColumnHandler(ObjectPersonColumnHandler):
   def insert_object(self):
     if self.dry_run or not self.value:
       return
+    obj = self.row_converter.obj
+    context = getattr(obj, 'context', None)
+    user_role = getattr(all_models, 'UserRole', None)
     for person in self.value:
       ObjectPerson.query.filter_by(
-          personable_id=self.row_converter.obj.id,
-          personable_type=self.row_converter.obj.__class__.__name__,
+          personable_id=obj.id,
+          personable_type=obj.__class__.__name__,
           person=person
       ).delete()
+      if context and user_role:
+        # The fix is a bit hackish, because it uses ``UserRole`` model
+        # from ``ggrc_basic_permissions``. But it is the only way I found to
+        # fix the issue, without massive refactoring.
+        user_role.query.filter_by(person=person, context=context).delete()
     self.dry_run = True
 
 
@@ -706,19 +784,12 @@ class ControlAssertionColumnHandler(CategoryColumnHandler):
         row_converter, key, **options)
 
 
-class RequestColumnHandler(ParentColumnHandler):
-
-  def __init__(self, row_converter, key, **options):
-    self.parent = Request
-    super(RequestColumnHandler, self).__init__(row_converter, key, **options)
-
-
 class DocumentsColumnHandler(ColumnHandler):
 
   def get_value(self):
-    lines = ["{} {}".format(d.title, d.link)
+    lines = [u"{} {}".format(d.title, d.link)
              for d in self.row_converter.obj.documents]
-    return "\n".join(lines)
+    return u"\n".join(lines)
 
   def parse_item(self):
     lines = [line.rsplit(" ", 1) for line in self.raw_value.splitlines()]
@@ -742,25 +813,19 @@ class DocumentsColumnHandler(ColumnHandler):
     self.dry_run = True
 
 
-class RequestTypeColumnHandler(ColumnHandler):
-
-  def __init__(self, row_converter, key, **options):
-    self.key = key
-    valid_types = row_converter.object_class.VALID_TYPES
-    self.type_mappings = {str(s).lower(): s for s in valid_types}
-    super(RequestTypeColumnHandler, self).__init__(
-        row_converter, key, **options)
+class ExportOnlyColumnHandler(ColumnHandler):
 
   def parse_item(self):
-    value = self.raw_value.lower()
-    req_type = self.type_mappings.get(value)
+    pass
 
-    if req_type is None:
-      req_type = self.get_default()
-      if not self.row_converter.is_new:
-        req_type = self.get_value()
-      if value:
-        self.add_warning(errors.WRONG_VALUE,
-                         value=value[:20],
-                         column_name=self.display_name)
-    return req_type
+  def set_obj_attr(self):
+    pass
+
+  def get_value(self):
+    return super(ExportOnlyColumnHandler, self).get_value()
+
+  def insert_object(self):
+    pass
+
+  def set_value(self):
+    pass

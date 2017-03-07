@@ -1,5 +1,5 @@
 /*!
- Copyright (C) 2016 Google Inc.
+ Copyright (C) 2017 Google Inc.
  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -43,6 +43,7 @@
       email: 'trimmedLower',
       custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs'
     },
+    mixins: ['ca_update'],
     defaults: {
       name: '',
       email: '',
@@ -78,9 +79,15 @@
     },
     tree_view_options: {
       show_view: GGRC.mustache_path + '/people/tree.mustache',
+      attr_view: GGRC.mustache_path + '/people/tree-item-attr.mustache',
       header_view: GGRC.mustache_path + '/people/tree_header.mustache',
-      footer_view: GGRC.mustache_path + '/people/tree_footer.mustache',
-      add_item_view: GGRC.mustache_path + '/people/tree_add_item.mustache'
+      footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+      add_item_view: GGRC.mustache_path + '/people/tree_add_item.mustache',
+      mapper_attr_list: [
+        {attr_title: 'Title', attr_name: 'title'},
+        {attr_title: 'Email', attr_name: 'email'}
+      ],
+      disable_columns_configuration: true
     },
     list_view_options: {
       find_params: {__sort: 'name,email'}
@@ -92,6 +99,59 @@
 
       this.validateNonBlank('email');
       this.validateFormatOf('email', rEmail);
+    },
+    getUserRoles: function (instance, person) {
+      var result = $.Deferred();
+      var refreshQueue = new RefreshQueue();
+      var userRoles;
+
+      can.each(person.user_roles, function (ur) {
+        refreshQueue.enqueue(ur.getInstance());
+      });
+
+      refreshQueue.trigger().then(function (roles) {
+        userRoles = _.filter(roles, function (role) {
+          return instance.context && role.context &&
+            role.context.id === instance.context.id;
+        });
+        result.resolve(userRoles);
+      });
+      return result.promise();
+    },
+    getPersonMappings: function (instance, person, specificOject) {
+      var result = $.Deferred();
+      var mappingObject = instance[specificOject];
+      var mappingsRQ = new RefreshQueue();
+      var userRolesRQ = new RefreshQueue();
+
+      can.each(mappingObject, function (obj) {
+        mappingsRQ.enqueue(obj);
+      });
+
+      mappingsRQ.trigger().then(function (objects) {
+        var userRoles;
+        var objectPeopleFiltered = _.filter(objects, function (item) {
+          return item.person && item.person.id === person.id;
+        });
+
+        userRoles = _.filter(person.user_roles, function (item) {
+          item = item.getInstance();
+          return instance.context && item.context_id === instance.context.id;
+        }).map(function (item) {
+          return item.reify();
+        });
+
+        userRoles = userRoles.concat(objectPeopleFiltered);
+
+        can.each(userRoles, function (obj) {
+          userRolesRQ.enqueue(obj);
+        });
+
+        return userRolesRQ.trigger();
+      }).then(function (userRoles) {
+        result.resolve(userRoles);
+      });
+      return result.promise();
     }
   }, {
     display_name: function () {

@@ -1,45 +1,61 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-
+"""The module provides functionality for working with JSON templates."""
 # pylint: disable=too-few-public-methods
-
-"""The module contains functionality for working with json templates"""
+# pylint: disable=redefined-builtin
+# pylint: disable=invalid-name
 
 import copy
 import json
 import os
 
-from lib.constants import url
-from lib.constants import objects
+from lib.constants import objects, url
 
 
 class TemplateProvider(object):
-  """Processes json templates"""
-  RELATIVE_PATH_TEMPLATE = "template/{0}.json"
+  """Provider of the methods for work with JSON templates."""
+  _relationship = objects.get_singular(url.RELATIONSHIPS)
+  _object_owner = objects.get_singular(url.OBJECT_OWNERS)
+  _count = objects.COUNT
+  _contact = objects.get_singular(url.CONTACTS)
+  relative_path_template = "template/{0}.json"
   parsed_data = dict()
 
-  @staticmethod
-  def get_template_as_dict(obj_type, **kwargs):
-    """Return object representation based on json template"""
-    try:
-      obj = copy.deepcopy(TemplateProvider.parsed_data[obj_type])
-    except KeyError:
-      path = os.path.join(
-          os.path.dirname(__file__),
-          TemplateProvider.RELATIVE_PATH_TEMPLATE.format(obj_type))
-      with open(path) as json_file:
-        json_data = json_file.read()
-      data = json.loads(json_data)
-      TemplateProvider.parsed_data[obj_type] = data
-      obj = copy.deepcopy(data)
+  @classmethod
+  def generate_template_as_dict(cls, template, **kwargs):
+    """Get template as dictionary from a predefined JSON file and attributes
+    (items (kwargs): key=value).
+    Return the dictionary like as {type: {key: value, ...}}.
+    """
+    path = os.path.join(os.path.dirname(__file__),
+                        cls.relative_path_template.format(template))
+    with open(path) as json_file:
+      json_data = json_file.read()
+    data = json.loads(json_data)
+    cls.parsed_data[template] = data
+    obj = copy.deepcopy(data)
     obj.update(kwargs)
-    contact = {"contact": TemplateProvider.generate_object(1, objects.PEOPLE)}
-    obj.update(contact)
-    return {obj_type: obj}
+    if template not in {cls._relationship, cls._object_owner, cls._count}:
+      contact = ({cls._contact: cls.generate_object(1, objects.PEOPLE)})
+      obj.update(contact)
+    return {template: obj}
+
+  @classmethod
+  def update_template_as_dict(cls, template, **kwargs):
+    """Update the template as the list of dictionary according to the
+    attributes (items (kwargs): key=value).
+    Return the list of dictionary like as [{type: {key: value, ...}}].
+    """
+    data = json.loads(template)
+    type = data.iterkeys().next()
+    value = data.itervalues().next()
+    obj = copy.deepcopy(value)
+    obj.update(kwargs)
+    return {type: obj}
 
   @staticmethod
   def generate_object(obj_id, obj_type):
-    """Return minimal object representation by id and type"""
+    """Return minimal object representation by id and type."""
     result = {}
     result["id"] = obj_id
     result["href"] = "/".join([url.API, obj_type, str(obj_id)])

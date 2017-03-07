@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -9,11 +9,10 @@
     template: can.view(GGRC.mustache_path +
       '/base_templates/mapping_tree_view.mustache'),
     scope: {
-      reusable: '@',
-      reuseMethod: '@',
       treeViewClass: '@',
       expandable: '@',
       sortField: '@',
+      emptyText: '@',
       parentInstance: null,
       mappedObjects: [],
       isExpandable: function () {
@@ -76,7 +75,8 @@
         var binding;
 
         ev.stopPropagation();
-
+        // Refactor and show spinner instead (for all lists)
+        el.hide();
         binding = _.find(mappings, function (mapping) {
           return mapping.instance.id === instance.id &&
             mapping.instance.type === instance.type;
@@ -91,17 +91,7 @@
                 return mapping.documentable.reify();
               }
             })
-            .fail(function (err) {
-              var messages = {
-                '403': 'You don\'t have the permission to access the ' +
-                'requested resource. It is either read-protected or not ' +
-                'readable by the server.'
-              };
-              if (messages[err.status]) {
-                $('body').trigger('ajax:flash',
-                  {warning: messages[err.status]});
-              }
-            });
+            .fail(GGRC.Errors.notifierXHR('error'));
         });
       }
     }

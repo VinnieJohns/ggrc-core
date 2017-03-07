@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Handlers columns dealing with user roles."""
 
@@ -149,13 +149,17 @@ class UserRoleColumnHandler(UserColumnHandler):
   }
 
   _allowed_roles = [
-      "Reader",
-      "Editor",
       "Administrator",
+      "Creator",
+      "Editor",
+      "Reader",
+      ""
   ]
 
   def parse_item(self):
     value = self.raw_value.lower()
+    if value.title() not in self._allowed_roles:
+      self.add_error(errors.WRONG_VALUE, column_name=self.display_name)
     name = self._role_map.get(value, value)
     return Role.query.filter_by(name=name).first()
 
@@ -189,11 +193,13 @@ class UserRoleColumnHandler(UserColumnHandler):
     self.dry_run = True
 
 COLUMN_HANDLERS = {
-    "program_editor": ProgramEditorColumnHandler,
-    "program_owner": ProgramOwnerColumnHandler,
-    "program_reader": ProgramReaderColumnHandler,
-    "user_role": UserRoleColumnHandler,
-    "user_role:Auditor": AuditAuditorColumnHandler,
-    "workflow_member": WorkflowMemberColumnHandler,
-    "workflow_owner": WorkflowOwnerColumnHandler,
+    "default": {
+        "program_editor": ProgramEditorColumnHandler,
+        "program_owner": ProgramOwnerColumnHandler,
+        "program_reader": ProgramReaderColumnHandler,
+        "user_role": UserRoleColumnHandler,
+        "user_role:Auditor": AuditAuditorColumnHandler,
+        "workflow_member": WorkflowMemberColumnHandler,
+        "workflow_owner": WorkflowOwnerColumnHandler,
+    },
 }

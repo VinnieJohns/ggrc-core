@@ -1,15 +1,17 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
-<h6 class="people-list__label">People</h6>
+{{^disableTitle}}
+  <h6 class="people-list__label">People</h6>
+{{/disableTitle}}
 <div class="side-content">
   {{#instance.roleConflicts}}
     <div class="centered">
-      <div class="alert alert-error">
+      <div class="alert alert-verifier">
         <p>
-          Assignee and Verifier cannot be the same person!
+            Please be informed that Assignee and Verifier are the same person.
         </p>
       </div>
     </div>
@@ -17,15 +19,22 @@
 
   <ul class="label-list">
     {{#instance.class.assignable_list}}
-      {{#if required}}
         <li>
-          <people-group validate="validate" deferred="deferred" editable="editable" instance="instance" mapping="mapping" required="true" type="type"></people-group>
+          <people-group
+                  deferred="deferred"
+                  editable="editable"
+                  instance="instance"
+                  mapping="mapping"
+                  type="type"
+                  heading="title"
+                  bold-title="disableTitle"
+                  tabindex="7"
+                  {{#if required}}
+                  required="true"
+                  validate="validate"
+                  {{/if}}>
+          </people-group>
         </li>
-      {{else}}
-        <li class="hidable">
-          <people-group deferred="deferred" editable="editable" instance="instance" mapping="mapping" type="type"></people-group>
-        </li>
-      {{/if}}
-    {{/instance}}
+    {{/instance.class.assignable_list}}
   </ul>
 </div>

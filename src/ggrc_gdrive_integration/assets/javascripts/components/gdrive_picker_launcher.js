@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -270,28 +270,7 @@
                 }).save();
               }
 
-              return $.when(
-                CMS.Models.ObjectFile.findAll({
-                  file_id: file.id, fileable_id: docs[0].id
-                }),
-                objectDoc
-              ).then(function (ofs) {
-                if (ofs.length < 1) {
-                  if (that.deferred) {
-                    doc.mark_for_addition('files', file, {
-                      context: that.instance.context || {id: null}
-                    });
-                  } else {
-                    return new CMS.Models.ObjectFile({
-                      context: that.instance.context || {id: null},
-                      file: file,
-                      fileable: doc
-                    }).save();
-                  }
-                }})
-              .then(function () {
-                return doc;
-              });
+              return objectDoc;
             });
             return dfdDoc;
           });

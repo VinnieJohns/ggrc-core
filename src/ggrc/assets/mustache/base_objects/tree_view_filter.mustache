@@ -1,26 +1,15 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
-  <div class="sticky sticky-header tree-filter"
-       {{#filter_is_hidden}}style="height: 0; margin-bottom: 0;"{{/filter_is_hidden}}
+  <div class="tree-filter tree-filter_paging"
        data-height="42"
        data-margin-bottom="25">
     <div class="sticky-filter inner-filter-sticky">
       <div class="tree-filter__inline-filtering clearfix" {{ (el) -> el.ggrc_controllers_tree_filter() }} >
 
         <div class="tree-filter__fluid-wrap">
-          <div class="tree-filter__title-wrap">
-            <div class="tree-filter__title">
-              <h6>
-                Filter
-                {{#instance}}
-                  {{far_model.title_plural}}
-                {{/instance}}
-              </h6>
-            </div>
-          </div>
           <div class="tree-filter__input-wrap">
             <div class="tree-filter__expression-holder">
               <input name="filter_query" type="text" class="tree-filter__input tree-filter__input--wide">
@@ -34,12 +23,25 @@
               <a id="page-help" class="popover-template" data-get-template="help/filters_helper_content" href="javascript://">
                 <i class="fa fa-question-circle"></i>
               </a>
-              <input type="reset" class="btn btn-small btn-draft" name="" value="Reset">
+              <input type="reset" class="btn btn-small btn-draft tree-filter__button__reset" name="" value="Reset">
               <input type="submit" class="btn btn-small btn-info" name="" value="Filter">
             </div>
           </div>
+          <div class="tree-filter__status-wrap">
+            {{#if statusFilterVisible}}
+            <multiselect-dropdown 
+              {options}="filter_states"
+              placeholder="Filter by State",
+              plural="States">
+            </multiselect-dropdown>
+            {{/if}}
+          </div>
+          <div class="tree-filter__paging-wrap">
+            <div class="tree-filter__paging">
+                <tree-pagination paging="paging"></tree-pagination>
+            </div>
+          </div>
         </div>
-
       </div>
     </div>
   </div>

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """
@@ -11,13 +11,14 @@ from integration.ggrc import TestCase
 from integration.ggrc.api_helper import Api
 from integration.ggrc.generator import Generator
 from integration.ggrc.generator import ObjectGenerator
+from integration.ggrc.models import factories
 
 
 class TestCreatorAudit(TestCase):
   """Set up necessary objects and test Creator role with Audit roles"""
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestCreatorAudit, self).setUp()
     self.generator = Generator()
     self.api = Api()
     self.object_generator = ObjectGenerator()
@@ -34,13 +35,13 @@ class TestCreatorAudit(TestCase):
             "objects": {
                 "audit": {
                     "get": 200,
-                    "put": 403,
+                    "put": 200,
                     "delete": 403
                 },
                 "mapped_Issue": {
                     "get": 200,
-                    "put": 403,
-                    "delete": 403
+                    "put": 200,
+                    "delete": 200
                 },
                 "unrelated_Issue": {
                     "get": 403,
@@ -50,8 +51,8 @@ class TestCreatorAudit(TestCase):
                 },
                 "mapped_Assessment": {
                     "get": 200,
-                    "put": 403,
-                    "delete": 403
+                    "put": 200,
+                    "delete": 200
                 },
                 "unrelated_Assessment": {
                     "get": 403,
@@ -145,7 +146,7 @@ class TestCreatorAudit(TestCase):
     test_case = self.test_cases[test_case_name]
     editor = self.people.get('editor')
     self.api.set_user(editor)
-    random_title = self.object_generator.random_str()
+    random_title = factories.random_str()
     response = self.api.post(all_models.Program, {
         "program": {"title": random_title, "context": None},
     })
@@ -166,7 +167,7 @@ class TestCreatorAudit(TestCase):
     self.objects["audit"] = all_models.Audit.query.get(audit_id)
 
     for prefix in ("mapped", "unrelated"):
-      random_title = self.object_generator.random_str()
+      random_title = factories.random_str()
 
       response = self.api.post(all_models.Issue, {
           "issue": {"title": random_title, "context": None},

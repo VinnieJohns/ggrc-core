@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Test how different roles can access Workflow specific object"""
 
@@ -16,8 +16,7 @@ class WorkflowRolesTestCase(WorkflowTestCase):
   """Workflow roles test case"""
 
   def setUp(self):
-    # old-style class
-    WorkflowTestCase.setUp(self)
+    super(WorkflowRolesTestCase, self).setUp()
 
     self.workflow_res = None
     self.workflow_obj = None

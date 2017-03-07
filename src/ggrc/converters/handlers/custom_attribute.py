@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Handlers used for custom attribute columns."""
@@ -7,7 +7,6 @@ from dateutil.parser import parse
 
 from sqlalchemy import and_
 
-from ggrc import db
 from ggrc import models
 from ggrc.converters import errors
 from ggrc.converters.handlers import handlers
@@ -31,6 +30,21 @@ class CustomAttributeColumHandler(handlers.TextColumnHandler):
       _types.RICH_TEXT: lambda self: self.get_rich_text_value(),
       _types.MAP: lambda self: self.get_person_value(),
   }
+
+  def set_obj_attr(self):
+    """Set object attribute method should do nothing for custom attributes.
+
+    CA values set in insert_object() method.
+    """
+    if self.value is None:
+      return
+
+    cav = self._get_or_create_ca()
+    cav.attribute_value = self.value
+    if isinstance(cav.attribute_value, models.mixins.Identifiable):
+      obj = cav.attribute_value
+      cav.attribute_value = obj.__class__.__name__
+      cav.attribute_object_id = obj.id
 
   def parse_item(self):
     """Parse raw value from csv file
@@ -57,12 +71,20 @@ class CustomAttributeColumHandler(handlers.TextColumnHandler):
     definition = self.get_ca_definition()
     if not definition:
       return ""
+
     for value in self.row_converter.obj.custom_attribute_values:
       if value.custom_attribute_id == definition.id:
         if value.custom_attribute.attribute_type.startswith("Map:"):
-          obj = value.attribute_object
-          return getattr(obj, "email", getattr(obj, "slug", None))
-        return value.attribute_value
+          if value.attribute_object_id:
+            obj = value.attribute_object
+            return getattr(obj, "email", getattr(obj, "slug", None))
+        elif value.custom_attribute.attribute_type == _types.CHECKBOX:
+          attr_val = value.attribute_value if value.attribute_value else u"0"
+          attr_val = int(attr_val)
+          return str(bool(attr_val)).upper()
+        else:
+          return value.attribute_value
+
     return None
 
   def _get_or_create_ca(self):
@@ -82,25 +104,12 @@ class CustomAttributeColumHandler(handlers.TextColumnHandler):
         return ca_value
     ca_value = models.CustomAttributeValue(
         custom_attribute=ca_definition,
-        custom_attribute_id=ca_definition.id,
-        attributable_type=self.row_converter.obj.__class__.__name__,
-        attributable_id=self.row_converter.obj.id,
+        attributable=self.row_converter.obj,
     )
-    db.session.add(ca_value)
     return ca_value
 
   def insert_object(self):
     """Add custom attribute objects to db session."""
-    if self.dry_run or self.value is None:
-      return
-
-    ca = self._get_or_create_ca()
-    ca.attribute_value = self.value
-    if isinstance(ca.attribute_value, models.mixins.Identifiable):
-      obj = ca.attribute_value
-      ca.attribute_value = obj.__class__.__name__
-      ca.attribute_object_id = obj.id
-    self.dry_run = True
 
   def get_date_value(self):
     """Get date value from input string date."""
@@ -108,7 +117,9 @@ class CustomAttributeColumHandler(handlers.TextColumnHandler):
       return None  # ignore empty fields
     value = None
     try:
-      value = parse(self.raw_value)
+      value = parse(self.raw_value).strftime(
+          models.CustomAttributeValue.DATE_FORMAT_ISO,
+      )
     except (TypeError, ValueError):
       self.add_warning(errors.WRONG_VALUE, column_name=self.display_name)
     if self.mandatory and value is None:
@@ -192,6 +203,7 @@ class ObjectCaColumnHandler(CustomAttributeColumHandler):
     if self.dry_run:
       return
     self.value = self.parse_item()
+    super(ObjectCaColumnHandler, self).set_obj_attr()
 
   def get_ca_definition(self):
     """Get custom attribute definition for a specific object."""

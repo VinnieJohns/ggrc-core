@@ -1,13 +1,14 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+"""The module provides service for working with GGRC's objects."""
 
-"""All objects supported by the app"""
 
+# objects
 PROGRAMS = "programs"
 WORKFLOWS = "workflows"
 AUDITS = "audits"
 ASSESSMENTS = "assessments"
-REQUESTS = "requests"
+ASSESSMENT_TEMPLATES = "assessment_templates"
 ISSUES = "issues"
 DIRECTIVES = "directives"
 REGULATIONS = "regulations"
@@ -31,6 +32,18 @@ FACILITIES = "facilities"
 MARKETS = "markets"
 RISKS = "risks"
 THREATS = "threats"
+RISK_ASSESSMENTS = "risk_assessments"
+
+ALL_CA_OBJECTS = (WORKFLOWS, RISK_ASSESSMENTS, THREATS, RISKS,
+                  PROGRAMS, AUDITS, OBJECTIVES, SECTIONS,
+                  CONTROLS, ISSUES, ASSESSMENTS, STANDARDS,
+                  REGULATIONS, POLICIES, CONTRACTS, CLAUSES,
+                  VENDORS, PEOPLE, ACCESS_GROUPS,
+                  ORG_GROUPS, PRODUCTS, MARKETS, PROCESSES,
+                  FACILITIES, PROJECTS, DATA_ASSETS, SYSTEMS)
+
+# templates
+COUNT = "count"
 
 
 def _get_singular(plurals):
@@ -60,9 +73,23 @@ def _get_singular(plurals):
 
 
 def get_singular(plural):
-  return _get_singular([plural])[0].title()
+  """Transform object name to singular and lower form.
+
+  Example:
+    risk_assessments -> risk_assessment
+  """
+  return _get_singular([plural])[0].lower()
 
 
 ALL_PLURAL = [k for k in globals().keys()
               if not k.startswith("_") or k == "ALL"]
 ALL_SINGULAR = _get_singular(ALL_PLURAL)
+
+
+def get_normal_form(obj_name):
+  """Transform object name to title form.
+
+  Example:
+    risk_assessments -> Risk Assessments
+  """
+  return obj_name.replace("_", " ").title()

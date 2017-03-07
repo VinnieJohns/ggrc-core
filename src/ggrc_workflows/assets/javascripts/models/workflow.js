@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -10,7 +10,7 @@
     root_object: "workflow",
     root_collection: "workflows",
     category: "workflow",
-    mixins: [],
+    mixins: ['ca_update', 'timeboxed'],
     findAll: "GET /api/workflows",
     findOne: "GET /api/workflows/{id}",
     create: "POST /api/workflows",
@@ -34,8 +34,6 @@
       workflow_people: "CMS.Models.WorkflowPerson.stubs",
       task_groups: "CMS.Models.TaskGroup.stubs",
       cycles: "CMS.Models.Cycle.stubs",
-      start_date: "date",
-      end_date: "date",
       //workflow_task_groups: "CMS.Models.WorkflowTaskGroup.stubs"
       modified_by: "CMS.Models.Person.stub",
       context: "CMS.Models.Context.stub",
@@ -53,6 +51,7 @@
     },
     tree_view_options: {
       show_view: GGRC.mustache_path + "/workflows/tree.mustache",
+      attr_view: GGRC.mustache_path + '/workflows/tree-item-attr.mustache',
       attr_list : [
         {attr_title: 'Title', attr_name: 'title'},
         {attr_title: 'Manager', attr_name: 'owner', attr_sort_field: ''},
@@ -86,32 +85,36 @@
           });
         }
       });
-    },
+    }
   }, {
-    save : function() {
-      var that = this,
-          task_group_title = this.task_group_title,
-          redirect_link;
+    save: function () {
+      var taskGroupTitle = this.task_group_title;
+      var redirectLink;
+      var taskGroup;
+      var dfd;
 
-      return this._super.apply(this, arguments).then(function(instance) {
-        redirect_link = instance.viewLink + "#task_group_widget";
-        if (!task_group_title) {
-          instance.attr('_redirect', redirect_link);
+      dfd = this._super.apply(this, arguments);
+      dfd.then(function (instance) {
+        redirectLink = instance.viewLink + '#task_group_widget';
+        instance.attr('_redirect', redirectLink);
+        if (!taskGroupTitle) {
           return instance;
         }
-        var tg = new CMS.Models.TaskGroup({
-          title: task_group_title,
+        taskGroup = new CMS.Models.TaskGroup({
+          title: taskGroupTitle,
           workflow: instance,
           contact: instance.people && instance.people[0] || instance.modified_by,
-          context: instance.context,
+          context: instance.context
         });
-        return tg.save().then(function(tg) {
-          // Prevent the redirect form workflow_page.js
-          tg.attr('_no_redirect', true);
-          instance.attr('_redirect', redirect_link + "/task_group/" + tg.id);
-          return that;
-        });
-      });
+        return taskGroup.save()
+          .then(function (tg) {
+            // Prevent the redirect form workflow_page.js
+            taskGroup.attr('_no_redirect', true);
+            instance.attr('_redirect', redirectLink + '/task_group/' + tg.id);
+            return this;
+          }.bind(this));
+      }.bind(this));
+      return dfd;
     },
     // Check if task groups are slated to start
     //   in the current week/month/quarter/year
@@ -137,28 +140,28 @@
               start = moment().isoWeekday(task.relative_start_day);
               end = moment().isoWeekday(task.relative_end_day);
               if (_afterOrSame(start, end)) {
-                end.add('w', 1);
+                end.add(1, 'w');
               }
               break;
             case "monthly":
               start = moment().date(task.relative_start_day);
               end = moment().date(task.relative_end_day);
               if (_afterOrSame(start, end)) {
-                end.add('M', 1);
+                end.add(1, 'M');
               }
               break;
             case "quarterly":
-              start = _currentQuarter().date(task.relative_start_day).add('M', task.relative_start_month-1);
-              end = _currentQuarter().date(task.relative_end_day).add('M', task.relative_end_month-1);
+              start = _currentQuarter().date(task.relative_start_day).add(task.relative_start_month-1, 'M');
+              end = _currentQuarter().date(task.relative_end_day).add(task.relative_end_month-1, 'M');
               if (_afterOrSame(start, end)) {
-                end.add('q', 1);
+                end.add(1, 'q');
               }
               break;
             case "annually":
               start = moment().date(task.relative_start_day).month(task.relative_start_month-1);
               end = moment().date(task.relative_end_day).month(task.relative_end_month-1);
               if (_afterOrSame(start, end)) {
-                end.add('y', 1);
+                end.add(1, 'y');
               }
               break;
           }
@@ -199,7 +202,7 @@
     // start day of month, affects start_date.
     //  Use when month number doesn't matter or is
     //  selectable.
-    start_day_of_month: can.compute(function(val) {
+    start_day_of_month: function(val) {
       var newdate;
       if(val) {
         while(val.isComputed) {
@@ -222,12 +225,12 @@
           return null;
         }
       }
-    }),
+    },
 
     // end day of month, affects end_date.
     //  Use when month number doesn't matter or is
     //  selectable.
-    end_day_of_month: can.compute(function(val) {
+    end_day_of_month: function(val) {
       var newdate;
       if(val) {
         while(val.isComputed) {
@@ -250,12 +253,12 @@
           return null;
         }
       }
-    }),
+    },
 
     // start month of quarter, affects start_date.
     //  Sets month to be a 31-day month in the chosen quarterly cycle:
     //  1 for Jan-Apr-Jul-Oct, 2 for Feb-May-Aug-Nov, 3 for Mar-Jun-Sep-Dec
-    start_month_of_quarter: can.compute(function(val) {
+    start_month_of_quarter: function(val) {
       var newdate;
       var month_lookup = [0, 4, 2]; //31-day months in quarter cycles: January, May, March
 
@@ -271,12 +274,12 @@
           return null;
         }
       }
-    }),
+    },
 
     // end month of quarter, affects end_date.
     //  Sets month to be a 31-day month in the chosen quarterly cycle:
     //  1 for Jan-Apr-Jul-Oct, 2 for Feb-May-Aug-Nov, 3 for Mar-Jun-Sep-Dec
-    end_month_of_quarter: can.compute(function(val) {
+    end_month_of_quarter: function(val) {
       var newdate;
       var month_lookup = [0, 7, 2]; //31-day months in quarter cycles: January, May, March
 
@@ -292,12 +295,12 @@
           return null;
         }
       }
-    }),
+    },
 
     // start month of yesr, affects start_date.
     //  Sets month to the chosen month, and adjusts
     //  day of month to be within chosen month
-    start_month_of_year: can.compute(function(val) {
+    start_month_of_year: function(val) {
       var newdate;
       if(val) {
         if(val > 12) {
@@ -317,12 +320,12 @@
           return null;
         }
       }
-    }),
+    },
 
     // end month of yesr, affects end_date.
     //  Sets month to the chosen month, and adjusts
     //  day of month to be within chosen month
-    end_month_of_year: can.compute(function(val) {
+    end_month_of_year: function(val) {
       var newdate;
       if(val) {
         if(val > 12) {
@@ -342,13 +345,13 @@
           return null;
         }
       }
-    }),
+    },
 
     // start day of week, affects start_date.
     //  Sets day of month to the first day of the
     //  month that is the selected day of the week
     //  Sunday is 0, Saturday is 6
-    start_day_of_week: can.compute(function(val) {
+    start_day_of_week: function(val) {
       var newdate;
       if(val) {
         val = +val;
@@ -363,13 +366,13 @@
           return null;
         }
       }
-    }),
+    },
 
     // end day of week, affects end_date.
     //  Sets day of month to the first day of the
     //  month that is the selected day of the week
     //  Sunday is 0, Saturday is 6
-    end_day_of_week: can.compute(function(val) {
+    end_day_of_week: function(val) {
       var newdate;
       if(val) {
         val = +val;
@@ -384,7 +387,7 @@
           return null;
         }
       }
-    })
+    }
   });
 
 })(window.can);

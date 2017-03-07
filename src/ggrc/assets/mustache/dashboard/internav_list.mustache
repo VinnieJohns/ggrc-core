@@ -1,10 +1,10 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
-{{#each widget_list}}
-  <li>
+{{#widget_list}}
+  <li class="{{internav_icon}}">
     {{#if_helpers '\
       #if' has_count '\
       and #if' count '\
@@ -13,14 +13,14 @@
       or #if' instance.constructor.obj_nav_options.show_all_tabs '\
       or #in_array' internav_display instance.constructor.obj_nav_options.force_show_list}}
 
-    <a href="{{ selector }}" rel="tooltip" data-placement="bottom" title="{{ internav_display }}">
+    <a href="{{urlPath}}{{ selector }}" rel="tooltip" data-placement="bottom" title="{{ internav_display }}">
       <div class="oneline">
         <i class="fa fa-{{ internav_icon }} color"></i>
         {{#if show_title}}
           {{internav_display}}
-          {{#has_count}}({{count}}{{#spinner}}...{{/spinner}}){{/has_count}}
+          {{#has_count}}({{firstnonempty count 0}}){{/has_count}}
         {{else}}
-          {{#has_count}}{{count}}{{#spinner}}...{{/spinner}}{{/has_count}}
+          {{#has_count}}{{firstnonempty count 0}}{{/has_count}}
         {{/if}}
         {{^count}}{{#has_count}}
           {{^instance.constructor.obj_nav_options.show_all_tabs}}
@@ -33,13 +33,14 @@
     </a>
     {{/if_helpers}}
   </li>
-{{/each}}
+{{/widget_list}}
+
 {{#is_allowed 'update' instance}}
 {{#if widget_list.length}}
 <li data-test-id="button_widget_add_2c925d94" class="hidden-widgets-list">
-  <a href="#dropdown-widgets" class="dropdown-toggle" data-toggle="dropdown" rel="tooltip" data-placement="bottom" title="Add widget"><i class="fa fa-plus-circle"></i> Add...</a>
+  <a href="{{urlPath}}#dropdown-widgets" class="dropdown-toggle" data-toggle="dropdown" rel="tooltip" data-placement="bottom" title="{{addTabTitle}}"><i class="fa fa-plus-circle"></i> {{addTabTitle}}</a>
   <div class="dropdown-menu" role="menu">
-    {{#each widget_list}}
+    {{#widget_list}}
       <div class="inner-nav-item">
         {{^if_helpers '\
           #if' has_count '\
@@ -48,17 +49,75 @@
           or #if' force_show '\
           or #if' instance.constructor.obj_nav_options.show_all_tabs '\
           or #in_array' internav_display instance.constructor.obj_nav_options.force_show_list}}
-        <a href="{{ selector }}">
-          <div class="oneline">
-            <i class="fa fa-{{ internav_icon }} color"></i>
-            {{internav_display}}
-          </div>
-        </a>
+
+          {{#if_target_modal_match model.shortName 'modal-ajax-form'}}
+            <a
+              href="{{urlPath}}{{selector}}"
+              rel="tooltip"
+              data-placement="left"
+              data-original-title="Create {{model.title_singular}}"
+              data-toggle="modal-ajax-form"
+              data-modal-reset="reset"
+              data-no-href-load="true"
+              data-modal-class="modal-wide"
+              data-object-singular="{{model.title_singular}}"
+              data-object-plural="{{model.table_plural}}"
+              data-object-params='{
+                  "{{instance.class.table_singular}}": {
+                      "id": {{instance.id}},
+                      "title": "{{instance.title}}"
+                  },
+                  "context": {
+                      "id": {{firstnonempty instance.context.id "null"}},
+                      "href": "{{instance.context.href}}",
+                      "type": "{{instance.context.type}}"
+                  }
+              }'
+            >
+              <div class="oneline">
+                <i class="fa fa-{{ internav_icon }} color"></i>
+                {{internav_display}}
+              </div>
+            </a>
+          {{else}}
+            <a
+              href="{{urlPath}}{{ selector }}"
+              {{^is_dashboard_or_all}}
+              {{#is_mappable_type instance.type model.shortName}}
+              {{#is_allowed_to_map instance model.shortName}}
+              {{^if_equals model.shortName 'Assessment'}}
+                data-clickable="true"
+                data-toggle="unified-mapper"
+                data-join-option-type="{{model.shortName}}"
+                data-join-object-id="{{instance.id}}"
+                data-join-object-type="{{instance.class.shortName}}"
+              {{/if_equals}}
+              {{/is_allowed_to_map}}
+              {{/is_mappable_type}}
+              {{/is_dashboard_or_all}}
+            >
+              <div class="oneline">
+                <i class="fa fa-{{ internav_icon }} color"></i>
+                {{internav_display}}
+              </div>
+            </a>
+          {{/if_helpers}}
+
         {{/if_helpers}}
       </div>
-    {{/each}}
+    {{/widget_list}}
   </div>
 </li>
 {{/if}}
 {{/is_allowed}}
+
 {{{render_hooks 'ObjectNav.Actions'}}}
+
+{{#if dividedTabsMode}}
+  <li class="not-priority-hide {{#if isMenuVisible}}visible{{/if}}">
+      <i class="fa fa-angle-{{#if isMenuVisible}}right{{else}}left{{/if}}"></i>
+      {{^if isMenuVisible}}
+      <span>{{hideTabTitle}}</span>
+      {{/if}}
+  </li>
+{{/if}}

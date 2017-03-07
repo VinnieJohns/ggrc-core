@@ -1,12 +1,12 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import itertools
 
 import ggrc
-import ggrc.models as models
-import integration.ggrc
-import integration.ggrc.generator
+from ggrc import models
+from integration.ggrc import TestCase
+from integration.ggrc import generator
 
 
 counter = 0
@@ -25,7 +25,7 @@ def relate(src, dst):
     return (dst, src)
 
 
-class automapping_count_limit:
+class automapping_count_limit(object):
   def __init__(self, new_limit):
     self.new_limit = new_limit
 
@@ -37,15 +37,12 @@ class automapping_count_limit:
     ggrc.automapper.rules.count_limit = self.original_limit
 
 
-class TestAutomappings(integration.ggrc.TestCase):
+class TestAutomappings(TestCase):
 
   def setUp(self):
-    integration.ggrc.TestCase.setUp(self)
-    self.gen = integration.ggrc.generator.ObjectGenerator()
+    super(TestAutomappings, self).setUp()
+    self.gen = generator.ObjectGenerator()
     self.api = self.gen.api
-
-  def tearDown(self):
-    integration.ggrc.TestCase.tearDown(self)
 
   def create_object(self, cls, data):
     name = cls._inflector.table_singular
@@ -66,6 +63,11 @@ class TestAutomappings(integration.ggrc.TestCase):
     if not missing:
       self.assertIsNotNone(rel,
                            msg='%s not mapped to %s' % (obj1.type, obj2.type))
+      revisions = models.Revision.query.filter_by(
+          resource_type='Relationship',
+          resource_id=rel.id,
+      ).count()
+      self.assertEqual(revisions, 1)
     else:
       self.assertIsNone(rel,
                         msg='%s mapped to %s' % (obj1.type, obj2.type))
@@ -303,33 +305,6 @@ class TestAutomappings(integration.ggrc.TestCase):
                  (control, section)],
     )
 
-  def test_automapping_request_audit(self):
-    _, creator = self.gen.generate_person(user_role="Creator")
-    program = self.create_object(models.Program, {
-        'title': make_name('Program')
-    })
-    audit = self.create_object(models.Audit, {
-        'title': make_name('Audit'),
-        'program': {'id': program.id},
-        'status': 'Planned',
-    })
-    control = self.create_object(models.Control, {
-        'title': make_name('Test control')
-    })
-    self.create_mapping(audit, control)
-    request = self.create_object(models.Request, {
-        'audit': {'id': audit.id},
-        'title': make_name('Request'),
-        'assignee': {'id': creator.id},
-        'request_type': 'documentation',
-        'status': 'Not Started',
-        'start_date': '1/1/2015',
-        'end_date': '1/1/2016',
-    })
-    self.assert_mapping(request, program)
-    self.assert_mapping(request, audit, missing=True)
-    self.assert_mapping(request, control, missing=True)
-
   def test_automapping_control_assesment(self):
     program = self.create_object(models.Program, {
         'title': make_name('Program')
@@ -360,35 +335,3 @@ class TestAutomappings(integration.ggrc.TestCase):
         to_create=[(program, regulation), (regulation, assessment)],
         implied=[(program, assessment)]
     )
-
-  def test_automapping_audit_program_object(self):
-    """Test rule 'mapping program objects to audit'."""
-    program = self.create_object(models.Program, {
-        'title': make_name('Program')
-    })
-    audit = self.create_object(models.Audit, {
-        'title': make_name('Audit'),
-        'program': {'id': program.id},
-        'status': 'Planned',
-    })
-    regulation = self.create_object(models.Regulation, {
-        'title': make_name('Test PD Regulation')
-    })
-    section = self.create_object(models.Section, {
-        'title': make_name('Test section'),
-        'directive': {'id': regulation.id},
-    })
-
-    self.assert_mapping_implication(
-        to_create=[(program, regulation), (program, section)],
-        implied=[(regulation, audit), (section, audit)]
-    )
-
-    audit_new = self.create_object(models.Audit, {
-        'title': make_name('Audit'),
-        'program': {'id': program.id},
-        'status': 'Planned',
-    })
-    self.assert_mapping(audit_new, regulation)
-    self.assert_mapping(audit_new, section)
-    self.assert_mapping(audit_new, program, missing=True)

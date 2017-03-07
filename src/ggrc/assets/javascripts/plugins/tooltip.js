@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 (function($) {
@@ -81,6 +81,10 @@
 
       monitorTimeoutId = setTimeout(monitorFn, monitorPeriod);
       $currentTarget.data('tooltip-monitor', true);
+      // Hide tooltip when target clicked
+      $currentTarget.on('click', function () {
+        $('.tooltip').hide();
+      });
     }
   }
   ;

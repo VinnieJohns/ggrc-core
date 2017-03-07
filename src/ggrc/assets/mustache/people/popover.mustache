@@ -1,5 +1,5 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
@@ -20,7 +20,7 @@
     <span class="user-disabled">
       (Inactive user)
     </span>
-  {{/if}}
+  {{/if_equals}}
   <div class="custom-popover-content">
     <div class="preview-container person-preview">
       <div class="row-fluid">
@@ -32,7 +32,7 @@
                   <span class="user-disabled">
                     (Inactive user)
                   </span>
-                {{/if}}
+                {{/if_equals}}
               </h4></li>
               <li><strong>Email:</strong> <a href="mailto:{{email}}" target="_blank">{{email}}</a></li>
               {{#company}}<li><strong>Company:</strong> {{company}}</li>{{/company}}

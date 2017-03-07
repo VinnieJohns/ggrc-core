@@ -1,15 +1,15 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from ggrc.models import Person
-from integration.ggrc.converters import TestCase
+from integration.ggrc import TestCase
 from integration.ggrc.generator import ObjectGenerator
 
 
 class TestBasicCsvImport(TestCase):
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestBasicCsvImport, self).setUp()
     self.generator = ObjectGenerator()
     self.client.get("/login")
 
@@ -22,32 +22,22 @@ class TestBasicCsvImport(TestCase):
     filename = "people_import_correct_order.csv"
     response = self.import_file(filename, dry_run=True)
     self.assertEqual(1, Person.query.count())
-    self.assertEqual(response[1]["name"], "Org Group")
-    self.assertEqual(set(), set(response[1]["row_warnings"]))
-    self.assertEqual(set(), set(response[1]["row_errors"]))
+    self._check_csv_response(response, {})
 
   def test_people_import_wrong_order_dry_run(self):
-    filename = "people_import_correct_order.csv"
     filename = "people_import_wrong_order.csv"
     response = self.import_file(filename, dry_run=True)
     self.assertEqual(1, Person.query.count())
-    self.assertEqual(response[1]["name"], "Org Group")
-    self.assertEqual(set(), set(response[1]["row_warnings"]))
-    self.assertEqual(set(), set(response[1]["row_errors"]))
+    self._check_csv_response(response, {})
 
   def test_people_import_correct_order(self):
     filename = "people_import_correct_order.csv"
     response = self.import_file(filename)
     self.assertEqual(5, Person.query.count())
-    self.assertEqual(response[1]["name"], "Org Group")
-    self.assertEqual(set(), set(response[1]["row_warnings"]))
-    self.assertEqual(set(), set(response[1]["row_errors"]))
+    self._check_csv_response(response, {})
 
   def test_people_import_wrong_order(self):
-    filename = "people_import_correct_order.csv"
     filename = "people_import_wrong_order.csv"
     response = self.import_file(filename)
     self.assertEqual(5, Person.query.count())
-    self.assertEqual(response[1]["name"], "Org Group")
-    self.assertEqual(set(), set(response[1]["row_warnings"]))
-    self.assertEqual(set(), set(response[1]["row_errors"]))
+    self._check_csv_response(response, {})

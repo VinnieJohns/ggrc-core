@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -32,10 +32,44 @@
 
   var draftOnUpdateMixin;
 
+  var historyWidgetCountsName = 'cycles:history';
+  var currentWidgetCountsName = 'cycles:active';
+
+  var historyWidgetFilter = {
+    expression: {
+      op: {name: '='},
+      left: 'is_current',
+      right: 0
+    }
+  };
+
+  var currentWidgetFilter = {
+    expression: {
+      op: {name: '='},
+      left: 'is_current',
+      right: 1
+    }
+  };
+
   // Register `workflows` extension with GGRC
   GGRC.extensions.push(WorkflowExtension);
 
   WorkflowExtension.name = 'workflows';
+
+  WorkflowExtension.countsMap = {
+    history: {
+      name: 'Cycle',
+      countsName: historyWidgetCountsName,
+      additionalFilter: historyWidgetFilter
+    },
+    activeCycles: {
+      name: 'Cycle',
+      countsName: currentWidgetCountsName,
+      additionalFilter: currentWidgetFilter
+    },
+    person: 'Person',
+    taskGroup: 'TaskGroup'
+  };
 
   // Register Workflow models for use with `infer_object_type`
   WorkflowExtension.object_type_decision_tree = function () {
@@ -167,7 +201,7 @@
             'DataAsset', 'Facility', 'Market', 'OrgGroup', 'Vendor', 'Process',
             'Product', 'Project', 'System', 'Regulation', 'Policy', 'Contract',
             'Standard', 'Program', 'Issue', 'Control', 'Section', 'Clause',
-            'Objective', 'Audit', 'Assessment', 'AccessGroup', 'Request',
+            'Objective', 'Audit', 'Assessment', 'AccessGroup',
             'Document', 'Risk', 'Threat'
           ]
         },
@@ -202,7 +236,6 @@
         related_controls: TypeFilter('related_objects', 'Control'),
         related_documents: TypeFilter('related_objects', 'Document'),
         related_assessments: TypeFilter('related_objects', 'Assessment'),
-        related_requests: TypeFilter('related_objects', 'Request'),
         regulations: TypeFilter('related_objects', 'Regulation'),
         contracts: TypeFilter('related_objects', 'Contract'),
         policies: TypeFilter('related_objects', 'Policy'),
@@ -335,7 +368,7 @@
     var pageInstance = GGRC.page_instance();
     var treeWidgets = GGRC.tree_view.base_widgets_by_type;
     var subTrees = GGRC.tree_view.sub_tree_for;
-    var subTreeItems = ['Cycle', 'Request'];
+    var subTreeItems = ['Cycle'];
     var models = ['TaskGroup', 'Workflow', 'CycleTaskEntry',
       'CycleTaskGroupObjectTask', 'CycleTaskGroupObject', 'CycleTaskGroup'];
     _.each(_workflowObjectTypes, function (type) {
@@ -403,7 +436,7 @@
             parent_instance: pageInstance,
             model: CMS.Models.Workflow,
             show_view: GGRC.mustache_path + '/workflows/tree.mustache',
-            footer_view: null
+            footer_view: GGRC.mustache_path + '/workflows/tree_footer.mustache'
           }
         },
         task: {
@@ -483,7 +516,7 @@
 
     GGRC.register_hook(
         'ObjectNav.Actions',
-        GGRC.mustache_path + '/dashboard/object_nav_actions');
+        GGRC.mustache_path + '/dashboard/object_nav_actions.mustache');
 
     $.extend(
       true,
@@ -509,7 +542,7 @@
               '/ggrc_basic_permissions/people_roles/' +
               'authorizations_by_person_tree.mustache',
             footer_view:
-              GGRC.mustache_path + '/wf_people/tree_footer.mustache',
+              GGRC.mustache_path + '/base_objects/tree_footer.mustache',
             add_item_view:
               GGRC.mustache_path + '/wf_people/tree_add_item.mustache'
           }
@@ -579,7 +612,9 @@
         draw_children: true,
         parent_instance: object,
         model: 'Cycle',
-        mapping: 'previous_cycles'
+        counts_name: historyWidgetCountsName,
+        mapping: 'previous_cycles',
+        additional_filter: historyWidgetFilter
       }
     };
 
@@ -594,7 +629,9 @@
         draw_children: true,
         parent_instance: object,
         model: 'Cycle',
+        counts_name: currentWidgetCountsName,
         mapping: 'current_cycle',
+        additional_filter: currentWidgetFilter,
         header_view: GGRC.mustache_path + '/cycles/tree_header.mustache',
         add_item_view:
           GGRC.mustache_path +
@@ -604,6 +641,17 @@
 
     newWidgetDescriptors.history = historyWidgetDescriptor;
     newWidgetDescriptors.current = currentWidgetDescriptor;
+
+    GGRC.Utils.CurrentPage
+      .initCounts([
+        WorkflowExtension.countsMap.history,
+        WorkflowExtension.countsMap.activeCycles,
+        WorkflowExtension.countsMap.person,
+        WorkflowExtension.countsMap.taskGroup
+      ], {
+        type: object.type,
+        id: object.id
+      });
 
     new GGRC.WidgetList(
       'ggrc_workflows',
@@ -666,13 +714,12 @@
   };
 
   GGRC.register_hook(
-      'LHN.Sections_workflow', GGRC.mustache_path + '/dashboard/lhn_workflows');
+      'Dashboard.Widgets',
+      GGRC.mustache_path + '/dashboard/widgets.mustache');
 
   GGRC.register_hook(
-      'Dashboard.Widgets', GGRC.mustache_path + '/dashboard/widgets');
-
-  GGRC.register_hook(
-      'Dashboard.Errors', GGRC.mustache_path + '/dashboard/info/errors');
+      'Dashboard.Errors',
+      GGRC.mustache_path + '/dashboard/info/errors.mustache');
 
   WorkflowExtension.init_mappings();
 

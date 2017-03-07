@@ -1,4 +1,4 @@
--# Copyright (C) 2016 Google Inc.
+-# Copyright (C) 2017 Google Inc.
 -# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 -extends 'layouts/base.haml'
@@ -71,13 +71,12 @@
           .pin-content
 
     %section.footer
-      .row-fluid
-        .span12
-          %p
-            =config.get('COPYRIGHT')
-            =config.get('COMPANY')
-            Version
-            =config.get('VERSION')
+      =config.get('COPYRIGHT')
+      =config.get('COMPANY')
+      Version
+      =config.get('VERSION')
+      .analytics
+        ={config.get('GOOGLE_ANALYTICS_SCRIPT') | safe}
 
   #lhn
     #lhs.lhs.accordion{ 'data-template': '/dashboard/lhn.mustache' }

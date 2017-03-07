@@ -1,38 +1,120 @@
 /*!
-    Copyright (C) 2016 Google Inc.
-    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-*/
+ Copyright (C) 2017 Google Inc.
+ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
 
 (function (GGRC, _) {
-  var base_widgets_by_type = {
-    AccessGroup: 'Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Audit: 'AccessGroup Clause Contract Control Assessment AssessmentTemplate DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Clause: 'AccessGroup Audit Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Contract: 'AccessGroup Audit Clause Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Process Product Program Project Request Section System Vendor',
-    Control: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Request Section Standard System Vendor',
-    Assessment: 'AccessGroup Audit Clause Contract Control DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Request Section Standard System Vendor',
-    DataAsset: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Facility: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Issue: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Market: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Objective: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    OrgGroup: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Person: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Policy Process Product Program Project Regulation Request Request Section Standard System Vendor',
-    Policy: 'AccessGroup Audit Clause Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Process Product Program Project Request Section System Vendor',
-    Process: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Product: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Program: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Project Regulation Request Section Standard System Vendor',
-    Project: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Regulation: 'AccessGroup Audit Clause Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Process Product Program Project Request Section System Vendor',
-    Request: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Section: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Standard: 'AccessGroup Audit Clause Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Process Product Program Project Request Section System Vendor',
-    System: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor',
-    Vendor: 'AccessGroup Audit Clause Contract Control Assessment DataAsset Facility Issue Market Objective OrgGroup Person Policy Process Product Program Project Regulation Request Section Standard System Vendor'
+  'use strict';
+  /**
+   * Tree View Widgets Configuration module
+   */
+  var allCoreTypes = [
+    'AccessGroup',
+    'Assessment',
+    'AssessmentTemplate',
+    'Audit',
+    'Clause',
+    'Contract',
+    'Control',
+    'DataAsset',
+    'Facility',
+    'Issue',
+    'Market',
+    'Objective',
+    'OrgGroup',
+    'Person',
+    'Policy',
+    'Process',
+    'Product',
+    'Program',
+    'Project',
+    'Regulation',
+    'Section',
+    'Standard',
+    'System',
+    'Vendor'
+  ];
+  // NOTE: Widgets that have the order value are sorted by an increase values,
+  // the rest of widgets are sorted alphabetically
+  var defaultOrderTypes = {
+    Standard: 10,
+    Regulation: 20,
+    Section: 30,
+    Objective: 40,
+    Control: 50,
+    Product: 60,
+    System: 70,
+    Process: 80,
+    Audit: 90,
+    Person: 100
   };
-  base_widgets_by_type = _.mapValues(base_widgets_by_type, function (conf) {
-    return conf.split(' ');
+  // Items allowed for mapping via snapshot.
+  var snapshotWidgetsConfig = GGRC.config.snapshotable_objects || [];
+  // Items allowed for relationship mapping
+  var excludeMappingConfig = [
+    'AssessmentTemplate',
+    'Issue'
+  ];
+  // Extra Tree View Widgets require to be rendered on Audit View
+  var auditInclusion = [
+    'Assessment',
+    'Person',
+    'Program'
+  ];
+  var baseWidgetsByType;
+  var orderedWidgetsByType = {};
+
+  var filteredTypes = _.difference(allCoreTypes, excludeMappingConfig);
+  // Audit is excluded and created a separate logic for it
+  baseWidgetsByType = {
+    AccessGroup: _.difference(filteredTypes, ['AccessGroup']),
+    Audit: [].concat(snapshotWidgetsConfig, excludeMappingConfig,
+      auditInclusion).sort(),
+    Clause: _.difference(filteredTypes, ['Clause']),
+    Contract: _.difference(filteredTypes,
+      ['Contract', 'Policy', 'Regulation', 'Standard']),
+    Control: filteredTypes,
+    Assessment: snapshotWidgetsConfig.concat('Audit').sort(),
+    AssessmentTemplate: [],
+    DataAsset: filteredTypes,
+    Facility: filteredTypes,
+    Issue: snapshotWidgetsConfig.concat('Audit').sort(),
+    Market: filteredTypes,
+    Objective: filteredTypes,
+    OrgGroup: filteredTypes,
+    Person: _.difference(filteredTypes, ['Person']),
+    Policy: _.difference(filteredTypes,
+      ['Contract', 'Policy', 'Regulation', 'Standard']),
+    Process: filteredTypes,
+    Product: filteredTypes,
+    Program: _.difference(filteredTypes, ['Program']),
+    Project: filteredTypes,
+    Regulation: _.difference(filteredTypes,
+      ['Contract', 'Policy', 'Regulation', 'Standard']),
+    Section: filteredTypes,
+    Standard: _.difference(filteredTypes,
+      ['Contract', 'Policy', 'Regulation', 'Standard']),
+    System: filteredTypes,
+    Vendor: filteredTypes
+  };
+
+  allCoreTypes.forEach(function (type) {
+    var related = baseWidgetsByType[type].slice(0);
+
+    orderedWidgetsByType[type] = _.chain(related)
+      .map(function (type) {
+        return {
+          name: type,
+          order: defaultOrderTypes[type]
+        };
+      })
+      .sortByAll(['order', 'name'])
+      .map('name')
+      .value();
   });
+
   GGRC.tree_view = GGRC.tree_view || new can.Map();
-  GGRC.tree_view.attr('base_widgets_by_type', base_widgets_by_type);
-})(this.GGRC, this._);
+  GGRC.tree_view.attr('base_widgets_by_type', baseWidgetsByType);
+  GGRC.tree_view.attr('orderedWidgetsByType', orderedWidgetsByType);
+  GGRC.tree_view.attr('defaultOrderTypes', defaultOrderTypes);
+})(window.GGRC, window._);

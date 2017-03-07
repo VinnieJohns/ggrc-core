@@ -1,5 +1,5 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
@@ -25,7 +25,7 @@
                     <span class="user-disabled">
                       (Inactive user)
                     </span>
-                  {{/if}}
+                  {{/if_equals}}
                 </div>
               </div>
 
@@ -38,7 +38,7 @@
                       <input type="checkbox" value="{{instance.title}}" checked="checked" disabled="true" class="object-check-single">
                     {{/result_direct_mappings}}
                   {{else}}
-                    <input type="checkbox" value="{{instance.title}}" {{#if_equals system_wide_role 'No Access'}}disabled="true"{{/if}} class="object-check-single">
+                    <input type="checkbox" value="{{instance.title}}" {{#if_equals system_wide_role 'No Role'}}disabled="true"{{/if_equals}} class="object-check-single">
                   {{/if}}
                 </div>
               </div>
@@ -68,7 +68,7 @@
                   <span class="user-disabled">
                     (Inactive user)
                   </span>
-                {{/if}}
+                {{/if_equals}}
               </span>
             {{/instance}}
             </div>

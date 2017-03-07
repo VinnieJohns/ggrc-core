@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from selenium.common import exceptions
@@ -118,7 +118,7 @@ class Header(base.Component):
         LhnMenu
     """
     try:
-      self.toggle_lhn_menu.toggle(on=False)
+      self.toggle_lhn_menu.toggle(on_el=False)
     except exceptions.WebDriverException:
       self._refresh_elements()
       self.close_lhn_menu()
@@ -148,8 +148,7 @@ class Dashboard(widget_bar.Dashboard, Header):
     self.button_help = base.Button(self._driver, self.locators.BUTTON_HELP)
 
 
-class AdminDashboard(widget_bar.AdminDashboard,
-                     Header):
+class AdminDashboard(widget_bar.AdminDashboard, Header):
   """Admin dashboard page model"""
   URL = environment.APP_URL + url.ADMIN_DASHBOARD
 

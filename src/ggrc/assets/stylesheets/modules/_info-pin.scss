@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
 .pin-content,
 .info-pin {
-  @include box-shadow(0 0 5px rgba(0,0,0, 0.3));
+  box-shadow: 0 0 5px rgba(0,0,0, 0.3);
   position: fixed;
   bottom: 40px;
   left: 27px;
@@ -13,16 +13,17 @@
   background: $white;
   z-index: zIndex(pin-content);
   overflow: auto;
+
   .info {
-    @include box-shadow(none);
+    box-shadow: none;
     padding: 15px 25px 20px;
     .small-info {
       i {
-        @include opacity(.25);
-        @include transition(opacity 0.2s ease);
+        opacity: .25;
+        transition: opacity 0.2s ease;
         cursor: pointer;
         &:hover {
-          @include opacity(1);
+          opacity: 1;
         }
       }
     }
@@ -45,33 +46,32 @@
 .sticky-info-panel {
   .pane-header {
     .details-wrap {
-      margin-top: 18px !important;
+      margin-top: 30px !important;
     }
   }
-  >.tier-content {
-    margin-top: 77px;
-  }
-  .details-wrap {
-    &.pin {
-      position: fixed;
-      right: 47px;
-      z-index: zIndex(details-wrap);
-      width: 100px;
-      background: $white;
-      margin-top: -15px !important;
-      padding-top: 5px;
+  info-pin-buttons {
+    position: fixed;
+    right: 47px;
+    width: 100px;
+    z-index: zIndex(info-pin-buttons);
+
+    &.details-wrap {
+      margin-top: -8px;
     }
   }
 }
 
 .info-pane-utility {
   @extend %clearfix;
+  position: relative;
   float: right;
+  z-index: zIndex(info-page-dropdown);
+
   .sticky-info-panel & {
     position: fixed;
     right: 47px;
     z-index: zIndex(info-pane-utility);
-    margin-top: 20px;
+    margin-top: 24px;
   }
   .assignable & {
     position: static;

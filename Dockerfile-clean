@@ -6,6 +6,7 @@ RUN curl -sL https://deb.nodesource.com/setup_6.x | bash - \
     curl \
     fabric \
     git-core \
+    libfontconfig \
     make \
     mysql-client \
     nodejs \
@@ -14,7 +15,6 @@ RUN curl -sL https://deb.nodesource.com/setup_6.x | bash - \
     python-pip \
     python-pycurl \
     python-virtualenv \
-    sqlite3 \
     unzip \
     vim \
     wget \

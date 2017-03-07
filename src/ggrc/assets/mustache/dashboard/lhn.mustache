@@ -1,5 +1,5 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
@@ -30,14 +30,13 @@
 
       <h4 class="search-title">Showing filtered results</h4>
 
-      <div class="lhs-nav emphesized">
+      <div class="lhs-nav">
         <ul class="top-level">
           {{{renderLive '/static/mustache/dashboard/lhn_search.mustache' type="Program" li_class="programs" tooltip_view='/programs/extended_info.mustache'  template_view='/static/mustache/programs/search_result.mustache'}}}
-          {{{render_hooks 'LHN.Sections_workflow'}}}
+          {{{renderLive '/static/mustache/workflows/lhn_search.mustache' type="Workflow" li_class="workflow" template_view="/static/mustache/workflows/search_result.mustache" tooltip_view='/workflows/extended_info.mustache'}}}
           {{{renderLive '/static/mustache/dashboard/lhn_search.mustache' type="Audit" li_class="programs" tooltip_view='/audits/extended_info.mustache' template_view='/static/mustache/audits/search_result.mustache'}}}
-          {{{renderLive '/static/mustache/dashboard/lhn_search.mustache' type="Assessment" li_class="programs"}}}
-          {{{renderLive '/static/mustache/dashboard/lhn_search.mustache' type="Request" li_class="programs"}}}
-          {{{renderLive '/static/mustache/dashboard/lhn_search.mustache' type="Issue" li_class="programs"}}}
+          {{{renderLive '/static/mustache/dashboard/lhn_search.mustache' type="Assessment" tooltip_view='/base_templates/assignable_extended_info.mustache' li_class="programs" actions="/static/mustache/base_objects/empty.mustache"}}}
+          {{{renderLive '/static/mustache/dashboard/lhn_search.mustache' type="Issue" li_class="programs" actions="/static/mustache/base_objects/empty.mustache"}}}
         </ul>
       </div>
 

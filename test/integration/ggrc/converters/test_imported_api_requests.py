@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Check number of db queries per API request.
@@ -13,8 +13,9 @@ from ggrc.utils import QueryCounter
 from ggrc.views import all_object_views
 from integration.ggrc_workflows.generator import WorkflowsGenerator
 
-from integration.ggrc.converters import TestCase
+from integration.ggrc import TestCase
 from integration.ggrc.generator import ObjectGenerator
+from integration.ggrc.models import factories
 
 
 class TestComprehensiveSheets(TestCase):
@@ -32,22 +33,27 @@ class TestComprehensiveSheets(TestCase):
             if model_name not in WHITELIST]
 
   # limit found by trial and error, may need tweaking if models change
-  LIMIT = 30
+  LIMIT = 32
+
+  @classmethod
+  def setUpClass(cls):
+    cls.first_run = True
 
   def setUp(self):
-    TestCase.setUp(self)
-    self.generator = ObjectGenerator()
     self.client.get("/login")
+    self.generator = ObjectGenerator()
+    if TestComprehensiveSheets.first_run:
+      TestComprehensiveSheets.first_run = False
+      super(TestComprehensiveSheets, self).setUp()
 
-    self.create_custom_attributes()
-    filename = "comprehensive_sheet1.csv"
-    self.import_file(filename)
+      self.create_custom_attributes()
+      self.import_file("comprehensive_sheet1.csv")
 
-    gen = WorkflowsGenerator()
-    wfs = all_models.Workflow.eager_query().filter_by(status='Draft').all()
-    for workflow in wfs:
-      _, cycle = gen.generate_cycle(workflow)
-      self.assertIsNotNone(cycle)
+      gen = WorkflowsGenerator()
+      wfs = all_models.Workflow.eager_query().filter_by(status='Draft').all()
+      for workflow in wfs:
+        _, cycle = gen.generate_cycle(workflow)
+        self.assertIsNotNone(cycle)
 
   def tearDown(self):
     pass
@@ -57,52 +63,68 @@ class TestComprehensiveSheets(TestCase):
 
     Query count should be <LIMIT for all model types.
     """
+    errors = set()
     with QueryCounter() as counter:
       for model in self.MODELS:
-        counter.queries = []
-        self.generator.api.get_query(model, "")
-        if counter.get > self.LIMIT:
-          print collections.Counter(counter.queries).most_common(1)
-        self.assertLess(counter.get, self.LIMIT,
-                        "Query count for API GET " + model.__name__)
+        try:
+          counter.queries = []
+          self.generator.api.get_query(model, "")
+          if counter.get > self.LIMIT:
+            print collections.Counter(counter.queries).most_common(1)
+          self.assertLess(counter.get, self.LIMIT,
+                          "Query count for object {} exceeded: {}/{}".format(
+                              model.__name__, counter.get, self.LIMIT)
+                          )
+        except AssertionError as error:
+          errors.add(error.message)
+    self.assertEqual(errors, set())
 
   def test_queries_per_object_page(self):
     """Import comprehensive_sheet1 and count db requests per collection get.
 
     Query count should be <LIMIT for all model types.
     """
+    errors = set()
     with QueryCounter() as counter:
       for view in all_object_views():
-        model = view.model_class
-        if model not in self.MODELS:
-          continue
-        instance = model.query.first()
-        if instance is None or getattr(instance, "id", None) is None:
-          continue
-        counter.queries = []
-        res = self.client.get("/{}/{}".format(view.url, instance.id))
-        self.assertEqual(res.status_code, 200)
-        self.assertLess(counter.get, self.LIMIT,
-                        "Query count for object page " + model.__name__)
+        try:
+          model = view.model_class
+          if model not in self.MODELS:
+            continue
+          instance = model.query.first()
+          if instance is None or getattr(instance, "id", None) is None:
+            continue
+          counter.queries = []
+          res = self.client.get("/{}/{}".format(view.url, instance.id))
+          self.assertEqual(res.status_code, 200)
+          self.assertLess(counter.get, self.LIMIT,
+                          "Query count for object {} exceeded: {}/{}".format(
+                              model.__name__, counter.get, self.LIMIT)
+                          )
+        except AssertionError as e:
+          errors.add(e.message)
+    self.assertEqual(errors, set())
 
   def test_queries_for_dashboard(self):
     with QueryCounter() as counter:
-      res = self.client.get("/permissions")
+      res = self.client.get("/dashboard")
       self.assertEqual(res.status_code, 200)
       self.assertLess(counter.get, self.LIMIT, "Query count for dashboard")
 
   def test_queries_for_permissions(self):
     with QueryCounter() as counter:
-      res = self.client.get("/dashboard")
+      res = self.client.get("/permissions")
       self.assertEqual(res.status_code, 200)
       self.assertLess(counter.get, self.LIMIT, "Query count for permissions")
 
   def create_custom_attributes(self):
     """Generate custom attributes needed by comprehensive_sheet1.csv."""
-    gen = self.generator.generate_custom_attribute
-    gen("control", title="my custom text", mandatory=True)
-    gen("program", title="my_text", mandatory=True)
-    gen("program", title="my_date", attribute_type="Date")
-    gen("program", title="my_checkbox", attribute_type="Checkbox")
-    gen("program", title="my_dropdown", attribute_type="Dropdown",
-        options="a,b,c,d")
+    CAD = factories.CustomAttributeDefinitionFactory
+    CAD(definition_type="control", title="my custom text", mandatory=True)
+    CAD(definition_type="program", title="my_text", mandatory=True)
+    CAD(definition_type="program", title="my_date", attribute_type="Date")
+    CAD(definition_type="program", title="my_checkbox",
+        attribute_type="Checkbox")
+    CAD(definition_type="program", title="my_dropdown",
+        attribute_type="Dropdown",
+        multi_choice_options="a,b,c,d")

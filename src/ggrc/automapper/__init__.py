@@ -1,21 +1,24 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from datetime import datetime
+from logging import getLogger
 import collections
-import logging
 
 from sqlalchemy.sql.expression import tuple_
+
 from ggrc import db
 from ggrc import models
 from ggrc.automapper.rules import rules
 from ggrc.login import get_current_user
-from ggrc.models.audit import Audit
 from ggrc.models.relationship import Relationship
-from ggrc.models.request import Request
 from ggrc.rbac.permissions import is_allowed_update
-from ggrc.services.common import Resource
+from ggrc.services.common import Resource, get_cache
 from ggrc.utils import benchmark, with_nop
+
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 
 class Stub(collections.namedtuple("Stub", ["type", "id"])):
@@ -160,6 +163,20 @@ class AutomapperGenerator(object):
           "automapping_id": parent_relationship.id}
           for src, dst in self.auto_mappings
           if (src, dst) != original]))  # (src, dst) is sorted
+      cache = get_cache(create=True)
+      if cache:
+        # Add inserted relationships into new objects collection of the cache,
+        # so that they will be logged within event and appropriate revisions
+        # will be created.
+        cache.new.update(
+            (relationship, relationship.log_json())
+            for relationship in Relationship.query.filter_by(
+                automapping_id=parent_relationship.id,
+                modified_by_id=current_user.id,
+                created_at=now,
+                updated_at=now,
+            )
+        )
 
   def _step(self, src, dst):
     explicit, implicit = rules[src.type, dst.type]
@@ -177,7 +194,7 @@ class AutomapperGenerator(object):
 
   def _step_implicit(self, src, dst, implicit):
     if not hasattr(models.all_models, src.type):
-      logging.warning('Automapping by attr: cannot find model %s', src.type)
+      logger.warning('Automapping by attr: cannot find model %s', src.type)
       return
     instance = self.instance_cache.get(src)
     if instance is None:
@@ -185,8 +202,8 @@ class AutomapperGenerator(object):
       instance = model.query.filter(model.id == src.id).first()
       self.instance_cache[src] = instance
     if instance is None:
-      logging.warning("Automapping by attr: cannot load model %s: %s",
-                      src.type, str(src.id))
+      logger.warning("Automapping by attr: cannot load model %s: %s",
+                     src.type, src.id)
       return
     for attr in implicit:
       if hasattr(instance, attr.name):
@@ -199,11 +216,11 @@ class AutomapperGenerator(object):
             if entry not in self.processed:
               self.queue.add(entry)
           else:
-            logging.warning('Automapping by attr: %s is None', attr.name)
+            logger.warning('Automapping by attr: %s is None', attr.name)
       else:
-        logging.warning(
+        logger.warning(
             'Automapping by attr: object %s has no attribute %s',
-            str(src), str(attr.name)
+            src, attr.name,
         )
 
   def _ensure_relationship(self, src, dst):
@@ -222,36 +239,44 @@ class AutomapperGenerator(object):
     return True
 
 
-def handle_relationship_post(source, destination):
-  """Handle posting of special relationships.
+def generate_relationship_snapshots(obj):
+  """Generate needed snapshots for a given relationship.
 
-  This function handles direct relationships that do not have a relationship
-  object. A fake object is created with source and destination and auto
-  mappings are then generated.
+  If we post a relationship for a snapshotable object and an Audit, we will map
+  that object to audits program, make a snapshot for it and map the snapshot to
+  the Audit.
+
+  NOTE: this function will be deprecated soon.
 
   Args:
-    source: Source model of relationship
-    destination: Destination model of relationship
-
+    obj: Relationship object.
   """
-  if source is None:
-    logging.warning("Automapping request listener: "
-                    "no source, no mappings created")
-    return
-  if destination is None:
-    logging.warning("Automapping request listener: "
-                    "no destination, no mappings created")
-    return
-  relationship = Relationship(source_type=source.type,
-                              source_id=source.id,
-                              destination_type=destination.type,
-                              destination_id=destination.id)
-  AutomapperGenerator().generate_automappings(relationship)
+
+  from ggrc.snapshotter import rules as snapshot_rules
+
+  parent = None
+  child = None
+  if "Audit" in obj.source_type:
+    parent = obj.source
+    child = obj.destination
+  elif "Audit" in obj.destination_type:
+    parent = obj.destination
+    child = obj.source
+
+  if parent and child.type in snapshot_rules.Types.all:
+    db.session.add(models.Snapshot(
+        parent=parent,
+        child_id=child.id,
+        child_type=child.type,
+        update_revision="new",
+        context=parent.context,
+        modified_by=get_current_user()
+    ))
 
 
 def register_automapping_listeners():
   """Register event listeners for auto mapper."""
-  # pylint: disable=unused-variable
+  # pylint: disable=unused-variable,unused-argument
 
   @Resource.collection_posted.connect_via(Relationship)
   def handle_relationship_collection_post(sender, objects=None, **kwargs):
@@ -266,15 +291,7 @@ def register_automapping_listeners():
     automapper = AutomapperGenerator()
     for obj in objects:
       if obj is None:
-        logging.warning("Automapping listener: no obj, no mappings created")
+        logger.warning("Automapping listener: no obj, no mappings created")
         return
+      generate_relationship_snapshots(obj)
       automapper.generate_automappings(obj)
-
-  @Resource.model_posted_after_commit.connect_via(Request)
-  @Resource.model_put_after_commit.connect_via(Request)
-  def handle_request(sender, obj=None, src=None, service=None):
-    handle_relationship_post(obj, obj.audit)
-
-  @Resource.model_posted_after_commit.connect_via(Audit)
-  def handle_audit(sender, obj=None, src=None, service=None):
-    handle_relationship_post(obj, obj.program)

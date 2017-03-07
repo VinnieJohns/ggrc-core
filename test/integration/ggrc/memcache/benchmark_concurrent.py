@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """
  Benchmark concurrent tests for checking consistency of cache on object changes
@@ -21,21 +21,21 @@ import threading
 localhost_headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'x-requested-by': 'gGRC',
+    'x-requested-by': 'GGRC',
     'Cookie': 'Please enter cookie'
 }
 
 ggrcdev_headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'x-requested-by': 'gGRC',
+    'x-requested-by': 'GGRC',
     'Cookie': 'Please enter cookie'
 }
 
 appspot_headers = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'x-requested-by': 'gGRC',
+    'x-requested-by': 'GGRC',
     'Cookie': 'Please enter cookie'
 }
 

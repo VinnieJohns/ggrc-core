@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -39,6 +39,14 @@ describe('CMS.Models.Cacheable', function () {
 
       expectedIdOrder = _.map(instance.custom_attribute_definitions, 'id');
       expect(expectedIdOrder).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('skips sorting if no custom attribute definitions', function () {
+      var actualOrder;
+      instance.attr('custom_attribute_definitions', undefined);
+      instance.setup_custom_attributes();
+      actualOrder = _.map(instance.custom_attribute_definitions, 'id');
+      expect(actualOrder).toEqual([]);
     });
   });
 });

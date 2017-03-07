@@ -1,8 +1,8 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
-;(function (can) {
+(function (can) {
   can.Model.Cacheable('CMS.Models.Issue', {
     root_object: 'issue',
     root_collection: 'issues',
@@ -11,30 +11,55 @@
     update: 'PUT /api/issues/{id}',
     destroy: 'DELETE /api/issues/{id}',
     create: 'POST /api/issues',
-    mixins: ['ownable', 'contactable'],
+    mixins: [
+      'ownable',
+      'contactable',
+      'ca_update',
+      'timeboxed',
+      'mapping-limit',
+      'inScopeObjects'
+    ],
     is_custom_attributable: true,
     attributes: {
       context: 'CMS.Models.Context.stub',
       modified_by: 'CMS.Models.Person.stub',
-      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs',
-      start_date: 'date',
-      end_date: 'date'
+      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs'
     },
     tree_view_options: {
       attr_list: can.Model.Cacheable.attr_list.concat([
         {attr_title: 'URL', attr_name: 'url'},
         {attr_title: 'Reference URL', attr_name: 'reference_url'}
-      ])
+      ]),
+      attr_view: GGRC.mustache_path + '/base_objects/tree-item-attr.mustache'
     },
-    statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-      'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+    info_pane_options: {
+      evidence: {
+        model: CMS.Models.Document,
+        mapping: 'all_documents',
+        show_view: GGRC.mustache_path + '/base_templates/attachment.mustache',
+        sort_function: GGRC.Utils.sortingHelpers.commentSort
+      }
+    },
+    defaults: {
+      status: 'Draft'
+    },
+    statuses: ['Draft', 'Deprecated', 'Active'],
     init: function () {
-      this._super && this._super.apply(this, arguments);
+      if (this._super) {
+        this._super.apply(this, arguments);
+      }
+      this.validatePresenceOf('audit');
       this.validateNonBlank('title');
     }
   }, {
-    object_model: can.compute(function () {
+    form_preload: function (newObjectForm) {
+      var pageInstance = GGRC.page_instance();
+      if (pageInstance && pageInstance.type === 'Audit' && !this.audit) {
+        this.attr('audit', pageInstance);
+      }
+    },
+    object_model: function () {
       return CMS.Models[this.attr('object_type')];
-    })
+    }
   });
-})(this.can);
+})(window.can, window.GGRC, window.CMS);

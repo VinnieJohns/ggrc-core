@@ -1,33 +1,38 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+
+"""JSON resource state representation handler for GGRC models."""
+
+# pylint: disable=no-name-in-module
+# false positive for RelationshipProperty
 
 from datetime import datetime
 
+from flask import g
+import iso8601
+import sqlalchemy
 from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import RelationshipProperty
 from werkzeug.exceptions import BadRequest
-import iso8601
-import sqlalchemy
 
+import ggrc.builder
+import ggrc.models
+import ggrc.services
 from ggrc import db
 from ggrc.login import get_current_user_id
 from ggrc.models.reflection import AttributeInfo
 from ggrc.models.types import JsonType
+from ggrc.models.utils import PolymorphicRelationship
 from ggrc.utils import url_for
 from ggrc.utils import view_url_for
-import ggrc.builder
-import ggrc.models
-import ggrc.services
-
-"""JSON resource state representation handler for gGRC models."""
 
 
 def get_json_builder(obj):
   """Instantiate or retrieve a JSON representation builder for the given
   object.
   """
-  if type(obj) is type:
+  if isinstance(obj, type):
     cls = obj
   else:
     cls = obj.__class__
@@ -41,14 +46,15 @@ def get_json_builder(obj):
 
 
 def publish_base_properties(obj):
-    ret = {}
-    self_url = url_for(obj)
-    if self_url:
-      ret['selfLink'] = self_url
-    view_url = view_url_for(obj)
-    if view_url:
-      ret['viewLink'] = view_url
-    return ret
+  """Return a dict with selfLink and viewLink for obj."""
+  ret = {}
+  self_url = url_for(obj)
+  if self_url:
+    ret['selfLink'] = self_url
+  view_url = view_url_for(obj)
+  if view_url:
+    ret['viewLink'] = view_url
+  return ret
 
 
 def publish(obj, inclusions=(), inclusion_filter=None):
@@ -57,29 +63,14 @@ def publish(obj, inclusions=(), inclusion_filter=None):
   values are returned unchanged or specially formatted if needed.
   """
   if inclusion_filter is None:
-    def inclusion_filter(x):
+    # pylint: disable=function-redefined; it is the intention
+    def inclusion_filter(_):
       return True
   publisher = get_json_builder(obj)
-  if publisher and getattr(publisher, '_publish_attrs', False):
+  if publisher and getattr(publisher, '_publish_attrs', []):
     ret = publish_base_properties(obj)
     ret.update(publisher.publish_contribution(
         obj, inclusions, inclusion_filter))
-    return ret
-  # Otherwise, just return the value itself by default
-  return obj
-
-
-def publish_stub(obj, inclusions=(), inclusion_filter=None):
-  publisher = get_json_builder(obj)
-  if publisher:
-    ret = {}
-    self_url = url_for(obj)
-    if self_url:
-      ret['href'] = self_url
-    ret['type'] = obj.__class__.__name__
-    ret['context_id'] = obj.context_id
-    if hasattr(publisher, '_stub_attrs') and publisher._stub_attrs:
-      ret.update(publisher.publish_stubs(obj, inclusions, inclusion_filter))
     return ret
   # Otherwise, just return the value itself by default
   return obj
@@ -112,13 +103,22 @@ class UpdateAttrHandler(object):
   """Performs the translation of a JSON state representation into update
   actions performed on a model object instance.
   """
+  # some attr handlers don't use every argument from the common interface
+  # pylint: disable=unused-argument
   @classmethod
   def do_update_attr(cls, obj, json_obj, attr):
     """Perform the update to ``obj`` required to make the attribute attr
     equivalent in ``obj`` and ``json_obj``.
     """
     class_attr = getattr(obj.__class__, attr)
-    if (hasattr(attr, '__call__')):
+    update_raw = attr in getattr(obj.__class__, "_update_raw", [])
+    if update_raw:
+      # The attribute has a special setter that can handle raw json fields
+      # properly. This is used for special mappings such as custom attribute
+      # values
+      attr_name = attr
+      value = json_obj.get(attr_name)
+    elif hasattr(attr, '__call__'):
       # The attribute has been decorated with a callable, grab the name and
       # invoke the callable to get the value
       attr_name = attr.attr_name
@@ -135,41 +135,46 @@ class UpdateAttrHandler(object):
       attr_name = attr
       method = getattr(cls, class_attr.__class__.__name__)
       value = method(obj, json_obj, attr_name, class_attr)
-    if isinstance(value, (set, list)) \
-       and (
-           not hasattr(class_attr, 'property') or not
-           hasattr(class_attr.property, 'columns') or not isinstance(
+    if (isinstance(value, (set, list)) and
+        not update_raw and (
+        not hasattr(class_attr, 'property') or not
+        hasattr(class_attr.property, 'columns') or not isinstance(
             class_attr.property.columns[0].type,
             JsonType)
-    ):
-      # SQLAlchemy instrumentation botches up if we replace entire collections
-      # It works if we update them with changes
-      new_set = set(value)
-      old_set = set(getattr(obj, attr_name))
-      coll_class_attr = getattr(obj.__class__, attr_name)
-      coll_attr = getattr(obj, attr_name)
-      # Join table objects require special handling so that we can be sure to
-      # set the modified_by_id correctly
-      if isinstance(coll_class_attr, AssociationProxy):
-        current_user_id = get_current_user_id()
-        proxied_attr = coll_class_attr.local_attr
-        proxied_property = coll_class_attr.remote_attr
-        proxied_set_map = dict([(getattr(i, proxied_property.key), i)
-                                for i in getattr(obj, proxied_attr.key)])
-        coll_attr = getattr(obj, proxied_attr.key)
-        for item in new_set - old_set:
-          new_item = coll_class_attr.creator(item)
-          new_item.modified_by_id = current_user_id
-          coll_attr.append(new_item)
-        for item in old_set - new_set:
-          coll_attr.remove(proxied_set_map[item])
-      else:
-        for item in new_set - old_set:
-          coll_attr.append(item)
-        for item in old_set - new_set:
-          coll_attr.remove(item)
+    )):
+      cls._do_update_collection(obj, value, attr_name)
     else:
       setattr(obj, attr_name, value)
+
+  @classmethod
+  def _do_update_collection(cls, obj, value, attr_name):
+    """Special logic to update relationship collection."""
+    # SQLAlchemy instrumentation botches up if we replace entire collections
+    # It works if we update them with changes
+    new_set = set(value)
+    old_set = set(getattr(obj, attr_name))
+    coll_class_attr = getattr(obj.__class__, attr_name)
+    coll_attr = getattr(obj, attr_name)
+    # Join table objects require special handling so that we can be sure to
+    # set the modified_by_id correctly
+    if isinstance(coll_class_attr, AssociationProxy):
+      current_user_id = get_current_user_id()
+      proxied_attr = coll_class_attr.local_attr
+      proxied_property = coll_class_attr.remote_attr
+      proxied_set_map = dict([(getattr(i, proxied_property.key), i)
+                              for i in getattr(obj, proxied_attr.key)])
+      coll_attr = getattr(obj, proxied_attr.key)
+      for item in new_set - old_set:
+        new_item = coll_class_attr.creator(item)
+        new_item.modified_by_id = current_user_id
+        coll_attr.append(new_item)
+      for item in old_set - new_set:
+        coll_attr.remove(proxied_set_map[item])
+    else:
+      for item in new_set - old_set:
+        coll_attr.append(item)
+      for item in old_set - new_set:
+        coll_attr.remove(item)
 
   @classmethod
   def InstrumentedAttribute(cls, obj, json_obj, attr_name, class_attr):
@@ -197,15 +202,15 @@ class UpdateAttrHandler(object):
     value = json_obj.get(attr_name)
     try:
       if value:
-        d = iso8601.parse_date(value)
-        d = d.replace(tzinfo=None)
+        date = iso8601.parse_date(value)
+        date = date.replace(tzinfo=None)
       else:
-        d = None
-      return d
-    except iso8601.ParseError as e:
+        date = None
+      return date
+    except iso8601.ParseError as error:
       raise BadRequest(
           'Malformed DateTime {0} for parameter {1}. '
-          'Error message was: {2}'.format(value, attr_name, e.message)
+          'Error message was: {2}'.format(value, attr_name, error.message)
       )
 
   @classmethod
@@ -216,13 +221,13 @@ class UpdateAttrHandler(object):
 
     try:
       return datetime.strptime(value, "%Y-%m-%d") if value else None
-    except ValueError as e:
+    except ValueError:
       try:
         return datetime.strptime(value, "%m/%d/%Y") if value else None
-      except ValueError as e:
+      except ValueError as error:
         raise BadRequest(
             'Malformed Date {0} for parameter {1}. '
-            'Error message was: {2}'.format(value, attr_name, e.message)
+            'Error message was: {2}'.format(value, attr_name, error.message)
         )
 
   @classmethod
@@ -242,10 +247,12 @@ class UpdateAttrHandler(object):
       rel_obj = json_obj.get(attr_name)
       if rel_obj:
         try:
-          # FIXME: Should this be .one() instead of .first() ?
+          cache = getattr(g, "referenced_objects", {})
+          if rel_class in cache:
+            return cache.get(rel_class, {}).get(rel_obj[u'id'])
           return db.session.query(rel_class).filter(
               rel_class.id == rel_obj[u'id']).first()
-        except(TypeError):
+        except TypeError:
           raise TypeError(''.join(['Failed to convert attribute ', attr_name]))
       return None
 
@@ -276,7 +283,6 @@ class UpdateAttrHandler(object):
     # return cls.query_for(rel_class, json_obj, attr_name, True)
     attr_value = json_obj.get(attr_name, None)
     if attr_value:
-      import ggrc.models
       rel_class_name = json_obj[attr_name]['type']
       rel_class = ggrc.models.get_model(rel_class_name)
       return cls.query_for(rel_class, json_obj, attr_name, False)
@@ -284,6 +290,7 @@ class UpdateAttrHandler(object):
 
   @classmethod
   def simple_property(cls, obj, json_obj, attr_name, class_attr):
+    """Translate the JSON value for an attr decorated with @simple_property."""
     return json_obj.get(attr_name)
 
 
@@ -320,8 +327,8 @@ Result dispatch:
 """
 
 
-def build_type_query(type, result_spec):
-  model = ggrc.models.get_model(type)
+def build_type_query(type_, result_spec):
+  model = ggrc.models.get_model(type_)
   mapper = model._sa_class_manager.mapper
   columns = []
   columns_indexes = {}
@@ -365,7 +372,7 @@ def build_type_query(type, result_spec):
       for val in vals:
         # Now build OR clause with (key, val) pairs
         clause = []
-        for i, v in enumerate(val):
+        for i, _ in enumerate(val):
           clause.append(cols[i] == val[i])
         clauses.append(sqlalchemy.and_(*clause))
       where_clauses.append(sqlalchemy.or_(*clauses))
@@ -378,14 +385,14 @@ def build_type_query(type, result_spec):
 
 def build_stub_union_query(queries):
   results = {}
-  for (type, conditions) in queries:
+  for (type_, conditions) in queries:
     if isinstance(conditions, (int, long, str, unicode)):
       # Assume `id` query
       keys, vals = ('id',), (conditions,)
-      results.setdefault(type, {}).setdefault(keys, {}).setdefault(vals, [])
+      results.setdefault(type_, {}).setdefault(keys, {}).setdefault(vals, [])
     elif isinstance(conditions, dict):
       keys, vals = zip(*sorted(conditions.items()))
-      results.setdefault(type, {}).setdefault(keys, {}).setdefault(vals, [])
+      results.setdefault(type_, {}).setdefault(keys, {}).setdefault(vals, [])
     else:
       # FIXME: Handle aggregated conditions recursively
       pass
@@ -393,17 +400,17 @@ def build_stub_union_query(queries):
   column_count = 0
   type_column_indexes = {}
   type_queries = {}
-  for (type, result_spec) in results.items():
-    columns_indexes, query = build_type_query(type, result_spec)
-    type_column_indexes[type] = columns_indexes
-    type_queries[type] = query
+  for (type_, result_spec) in results.items():
+    columns_indexes, query = build_type_query(type_, result_spec)
+    type_column_indexes[type_] = columns_indexes
+    type_queries[type_] = query
     if len(columns_indexes) > column_count:
       column_count = len(columns_indexes)
 
-  for (type, query) in type_queries.items():
-    for _ in range(column_count - len(type_column_indexes[type])):
+  for (type_, query) in type_queries.items():
+    for _ in range(column_count - len(type_column_indexes[type_])):
       query = query.add_column(sqlalchemy.literal(None))
-    type_queries[type] = query
+    type_queries[type_] = query
 
   queries_for_union = type_queries.values()
   if len(queries_for_union) == 0:
@@ -418,19 +425,20 @@ def build_stub_union_query(queries):
 
 
 def _render_stub_from_match(match, type_columns):
-  type = match[type_columns['type']]
-  id = match[type_columns['id']]
+  type_ = match[type_columns['type']]
+  id_ = match[type_columns['id']]
   return {
-      'type': type,
-      'id': id,
+      'type': type_,
+      'id': id_,
       'context_id': match[type_columns['context_id']],
-      'href': url_for(type, id=id),
+      'href': url_for(type_, id=id_),
   }
 
 
 class LazyStubRepresentation(object):
-  def __init__(self, type, conditions):
-    self.type = type
+
+  def __init__(self, type_, conditions):
+    self.type = type_
     if isinstance(conditions, (int, long)):
       conditions = {'id': conditions}
     self.conditions = conditions
@@ -454,25 +462,25 @@ class LazyStubRepresentation(object):
 
 def walk_representation(obj):  # noqa
   if isinstance(obj, dict):
-    for k, v in obj.items():
-      if isinstance(v, dict):
-        for x in walk_representation(v):
-          yield x
-      elif isinstance(v, (list, tuple)):
-        for x in walk_representation(v):
-          yield x
+    for key, value in obj.items():
+      if isinstance(value, dict):
+        for attr in walk_representation(value):
+          yield attr
+      elif isinstance(value, (list, tuple)):
+        for attr in walk_representation(value):
+          yield attr
       else:
-        yield v, k, obj
+        yield value, key, obj
   elif isinstance(obj, (list, tuple)):
-    for i, v in enumerate(obj):
-      if isinstance(v, dict):
-        for x in walk_representation(v):
-          yield x
-      elif isinstance(v, (list, tuple)):
-        for x in walk_representation(v):
-          yield x
+    for index, value in enumerate(obj):
+      if isinstance(value, dict):
+        for attr in walk_representation(value):
+          yield attr
+      elif isinstance(value, (list, tuple)):
+        for attr in walk_representation(value):
+          yield attr
       else:
-        yield v, i, obj
+        yield value, index, obj
 
 
 def gather_queries(resource):
@@ -499,9 +507,9 @@ def publish_representation(resource):
     results, type_columns, query = build_stub_union_query(queries)
     rows = query.all()
     for row in rows:
-      type = row[0]
-      for columns, matches in results[type].items():
-        vals = tuple(row[type_columns[type][c]] for c in columns)
+      type_ = row[0]
+      for columns, matches in results[type_].items():
+        vals = tuple(row[type_columns[type_][c]] for c in columns)
         if vals in matches:
           matches[vals].append(row)
 
@@ -510,11 +518,6 @@ def publish_representation(resource):
 
 class Builder(AttributeInfo):
   """JSON Dictionary builder for ggrc.models.* objects and their mixins."""
-
-  def generate_link_object_for_foreign_key(self, id, type, context_id=None):
-    """Generate a link object for this object reference."""
-    return {'id': id, 'type': type, 'href': url_for(type, id=id),
-            'context_id': context_id}
 
   def generate_link_object_for(
           self, obj, inclusions, include, inclusion_filter):
@@ -529,7 +532,7 @@ class Builder(AttributeInfo):
         'id': obj.id, 'type': type(obj).__name__, 'href': url_for(obj),
         'context_id': obj.context_id}
     for path in inclusions:
-      if type(path) is not str and type(path) is not unicode:
+      if not isinstance(path, basestring):
         attr_name, remaining_path = path[0], path[1:]
       else:
         attr_name, remaining_path = path, ()
@@ -579,7 +582,8 @@ class Builder(AttributeInfo):
       return self.publish_link_collection(
           target_objects, inclusions, include, inclusion_filter)
     else:
-      if isinstance(class_attr.remote_attr, property):
+      if isinstance(class_attr.remote_attr, (property,
+                                             PolymorphicRelationship)):
         target_name = class_attr.value_attr + '_id'
         target_type = class_attr.value_attr + '_type'
         return [
@@ -635,34 +639,40 @@ class Builder(AttributeInfo):
   def publish_attr(
           self, obj, attr_name, inclusions, include, inclusion_filter):
     class_attr = getattr(obj.__class__, attr_name)
+    result = None
+
     if isinstance(class_attr, AssociationProxy):
       if getattr(class_attr, 'publish_raw', False):
         published_attr = getattr(obj, attr_name)
         if hasattr(published_attr, "copy"):
-          return published_attr.copy()
+          result = published_attr.copy()
         else:
-          return published_attr
+          result = published_attr
       else:
-        return self.publish_association_proxy(
+        result = self.publish_association_proxy(
             obj, attr_name, class_attr, inclusions, include, inclusion_filter)
     elif isinstance(class_attr, InstrumentedAttribute) and \
             isinstance(class_attr.property, RelationshipProperty):
-      return self.publish_relationship(
+      result = self.publish_relationship(
           obj, attr_name, class_attr, inclusions, include, inclusion_filter)
     elif class_attr.__class__.__name__ == 'property':
       if not inclusions or include:
-        if (getattr(obj, '{0}_id'.format(attr_name))):
-          return LazyStubRepresentation(
+        if getattr(obj, '{0}_id'.format(attr_name)):
+          result = LazyStubRepresentation(
               getattr(obj, '{0}_type'.format(attr_name)),
               getattr(obj, '{0}_id'.format(attr_name)))
       else:
-        return self.publish_link(
+        result = self.publish_link(
             obj, attr_name, inclusions, include, inclusion_filter)
     else:
-      return getattr(obj, attr_name)
+      result = getattr(obj, attr_name)
+
+    return result
 
   def _publish_attrs_for(
-          self, obj, attrs, json_obj, inclusions=[], inclusion_filter=None):
+          self, obj, attrs, json_obj, inclusions=None, inclusion_filter=None):
+    if inclusions is None:
+      inclusions = []
     for attr in attrs:
       if hasattr(attr, '__call__'):
         attr_name = attr.attr_name
@@ -707,41 +717,20 @@ class Builder(AttributeInfo):
     for attr_name in attrs:
       UpdateAttrHandler.do_update_attr(obj, json_obj, attr_name)
 
-  def update_attrs(self, obj, json_obj):
-    """Translate the state representation given by ``json_obj`` into the
-    model object ``obj``.
-    """
-    self.do_update_attrs(obj, json_obj, self._update_attrs)
-
-  def create_attrs(self, obj, json_obj):
-    """Translate the state representation given by ``json_obj`` into the new
-    model object ``obj``.
-    """
-    self.do_update_attrs(obj, json_obj, self._create_attrs)
-
   def publish_contribution(self, obj, inclusions, inclusion_filter):
     """Translate the state represented by ``obj`` into a JSON dictionary"""
     json_obj = {}
     self.publish_attrs(obj, json_obj, inclusions, inclusion_filter)
     return json_obj
 
-  def publish_stubs(self, obj, inclusions, inclusion_filter):
-    """Translate the state represented by ``obj`` into a JSON dictionary
-    containing an abbreviated representation.
-    """
-    json_obj = {}
-    self._publish_attrs_for(
-        obj, self._stub_attrs, json_obj, inclusions, inclusion_filter)
-    return json_obj
-
   def update(self, obj, json_obj):
     """Update the state represented by ``obj`` to be equivalent to the state
     represented by the JSON dictionary ``json_obj``.
     """
-    self.update_attrs(obj, json_obj)
+    self.do_update_attrs(obj, json_obj, self._update_attrs)
 
   def create(self, obj, json_obj):
     """Update the state of the new model object ``obj`` to be equivalent to the
     state represented by the JSON dictionary ``json_obj``.
     """
-    self.create_attrs(obj, json_obj)
+    self.do_update_attrs(obj, json_obj, self._create_attrs)

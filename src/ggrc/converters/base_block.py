@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Module for handling a single import block.
@@ -7,20 +7,21 @@ Each import block should contain data for one Object type. The blocks are
 separated in the csv file with empty lines.
 """
 
+from logging import getLogger
 from collections import defaultdict
 from collections import OrderedDict
 from collections import Counter
 
-from flask import current_app
 from sqlalchemy import exc
-
-from ggrc import db
-from ggrc.utils import structures
 from sqlalchemy import or_
 from sqlalchemy import and_
+from sqlalchemy.orm.exc import UnmappedInstanceError
 
+from ggrc import db
 from ggrc import models
+from ggrc.rbac import permissions
 from ggrc.utils import benchmark
+from ggrc.utils import structures
 from ggrc.converters import errors
 from ggrc.converters import get_shared_unique_rules
 from ggrc.converters import pre_commit_checks
@@ -31,12 +32,20 @@ from ggrc.services.common import get_modified_objects
 from ggrc.services.common import update_index
 from ggrc.services.common import update_memcache_after_commit
 from ggrc.services.common import update_memcache_before_commit
+from ggrc.services.common import log_event
+from ggrc.services.common import Resource
+from ggrc_workflows.models.cycle_task_group_object_task import \
+    CycleTaskGroupObjectTask
 
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 CACHE_EXPIRY_IMPORT = 600
 
 
 class BlockConverter(object):
+  # pylint: disable=too-many-public-methods
 
   """ Main block converter class for dealing with csv files and data
 
@@ -48,7 +57,7 @@ class BlockConverter(object):
     row_errors (list of str): list containing row errors
     row_warnings (list of str): list containing row warnings
     object_ids (list of int): list containing all ids for the converted objects
-    rows (list of list of str): 2D array containg csv data
+    rows (list of list of str): 2D array containing csv data
     row_converters (list of RowConverter): list of row convertor objects with
       data from the coresponding row in rows attribute
     object_headers (dict): A dictionary containing object headers
@@ -92,6 +101,7 @@ class BlockConverter(object):
     self.offset = options.get("offset", 0)
     self.object_class = options.get("object_class")
     self.rows = options.get("rows", [])
+    self.operation = 'import' if self.rows else 'export'
     self.object_ids = options.get("object_ids", [])
     self.block_errors = []
     self.block_warnings = []
@@ -99,21 +109,49 @@ class BlockConverter(object):
     self.row_warnings = []
     self.row_converters = []
     self.ignore = False
-    if not self.object_class:
-      class_name = options.get("class_name", "")
-      self.add_errors(errors.WRONG_OBJECT_TYPE, line=self.offset + 2,
-                      object_name=class_name)
+    self._has_non_importable_columns = False
+    # For import contains model name from csv file.
+    # For export contains 'Model.__name__' value.
+    self.class_name = options.get("class_name", "")
+    # TODO: remove 'if' statement. Init should initialize only.
+    if self.object_class:
+      self.object_headers = get_object_column_definitions(self.object_class)
+      all_header_names = [unicode(key)
+                          for key in self.get_header_names().keys()]
+      raw_headers = options.get("raw_headers", all_header_names)
+      self.check_for_duplicate_columns(raw_headers)
+      self.headers = self.clean_headers(raw_headers)
+      self.unique_counts = self.get_unique_counts_dict(self.object_class)
+      self.table_singular = self.object_class._inflector.table_singular
+      self.name = self.object_class._inflector.human_singular.title()
+      self.organize_fields(options.get("fields", []))
+    else:
       self.name = ""
+
+  def check_block_restrictions(self):
+    """Check some block related restrictions"""
+    if not self.object_class:
+      self.add_errors(errors.WRONG_OBJECT_TYPE, line=self.offset + 2,
+                      object_name=self.class_name)
       return
-    self.object_headers = get_object_column_definitions(self.object_class)
-    all_header_names = [unicode(key) for key in self.get_header_names().keys()]
-    raw_headers = options.get("raw_headers", all_header_names)
-    self.check_for_duplicate_columns(raw_headers)
-    self.headers = self.clean_headers(raw_headers)
-    self.unique_counts = self.get_unique_counts_dict(self.object_class)
-    self.table_singular = self.object_class._inflector.table_singular
-    self.name = self.object_class._inflector.human_singular.title()
-    self.organize_fields(options.get("fields", []))
+    if (self.operation == 'import' and
+            self.object_class is CycleTaskGroupObjectTask and
+            not permissions.is_admin()):
+      self.add_errors(errors.PERMISSION_ERROR, line=self.offset + 2)
+      logger.error("Import failed with: Only admin can update existing "
+                   "cycle-tasks via import")
+    if self._has_non_importable_columns:
+      importable_column_names = []
+      for field_name in self.object_class.IMPORTABLE_FIELDS:
+        if field_name == 'slug':
+          continue
+        if field_name not in self.headers:
+          continue
+        importable_column_names.append(
+            self.headers[field_name]["display_name"])
+      self.add_warning(errors.ONLY_IMPORTABLE_COLUMNS_WARNING,
+                       line=self.offset + 2,
+                       columns=", ".join(importable_column_names))
 
   def _create_ca_definitions_cache(self):
     """Create dict cache for custom attribute definitions.
@@ -165,8 +203,8 @@ class BlockConverter(object):
             # Some relationships have an invalid state in the database and make
             # rel.source or rel.destination fail. These relationships are
             # ignored everywhere and should eventually be purged from the db
-            current_app.logger.error("Failed adding object to relationship "
-                                     "cache. Rel id: %s", rel.id)
+            logger.error("Failed adding object to relationship cache. "
+                         "Rel id: %s", rel.id)
       return cache
 
   def get_mapping_cache(self):
@@ -181,7 +219,8 @@ class BlockConverter(object):
     that case it is impossible to determine the correct handler for all
     columns. Blocks with duplicate names are ignored.
     """
-    counter = Counter(raw_headers)
+    counter = Counter(header.strip().rstrip("*").lower()
+                      for header in raw_headers)
     duplicates = [header for header, count in counter.items() if count > 1]
     if duplicates:
       self.add_errors(errors.DUPLICATE_COLUMN,
@@ -222,7 +261,7 @@ class BlockConverter(object):
   def clean_headers(self, raw_headers):
     """ Sanitize columns from csv file
 
-    Clear out all the bad column headers and remove coresponding column in the
+    Clear out all the bad column headers and remove corresponding column in the
     rows data.
 
     Args:
@@ -239,6 +278,13 @@ class BlockConverter(object):
     for index, header in enumerate(headers):
       if header in header_names:
         field_name = header_names[header]
+        if (self.operation == 'import' and
+                hasattr(self.object_class, "IMPORTABLE_FIELDS") and
+                field_name not in self.object_class.IMPORTABLE_FIELDS):
+          self._has_non_importable_columns = True
+          self.remove_column(index - removed_count)
+          removed_count += 1
+          continue
         clean_headers[field_name] = self.object_headers[field_name]
       else:
         self.add_warning(errors.UNKNOWN_COLUMN,
@@ -339,55 +385,94 @@ class BlockConverter(object):
           row_converter.insert_secondary_objects()
         except exc.SQLAlchemyError as err:
           db.session.rollback()
-          current_app.logger.error(
-              "Import failed with: {}".format(err.message))
+          logger.exception("Import failed with: %s", err.message)
           row_converter.add_error(errors.UNKNOWN_ERROR)
       self.save_import()
 
-  def import_objects(self):
-    """Add all objects to the database.
-
-    This function flushes all objects to the database and if the dry_run flag
-    is not set, the session gets committed and all signals for the imported
-    objects get sent.
-    """
-    if self.ignore:
-      return
-
+  def _import_objects_prepare(self):
+    """Setup all objects and do pre-commit checks for them."""
     for row_converter in self.row_converters:
       row_converter.setup_object()
 
     for row_converter in self.row_converters:
       self._check_object(row_converter)
 
+    self.clean_session_from_ignored_objs()
+
+  def import_objects(self):
+    """Add all objects to the database.
+
+    This function flushes all objects to the database if the dry_run flag is
+    not set and all signals for the imported objects get sent.
+    """
+    if self.ignore:
+      return
+
+    self._import_objects_prepare()
+
     if not self.converter.dry_run:
+      new_objects = []
       for row_converter in self.row_converters:
         row_converter.send_pre_commit_signals()
+      for row_converter in self.row_converters:
         try:
           row_converter.insert_object()
           db.session.flush()
         except exc.SQLAlchemyError as err:
           db.session.rollback()
-          current_app.logger.error(
-              "Import failed with: {}".format(err.message))
+          logger.exception("Import failed with: %s", err.message)
           row_converter.add_error(errors.UNKNOWN_ERROR)
-      self.save_import()
+        else:
+          if row_converter.is_new and not row_converter.ignore:
+            new_objects.append(row_converter.obj)
+      self.send_collection_post_signals(new_objects)
+      import_event = self.save_import()
       for row_converter in self.row_converters:
-        row_converter.send_post_commit_signals()
+        row_converter.send_post_commit_signals(event=import_event)
+
+  def clean_session_from_ignored_objs(self):
+    """Clean DB session from ignored objects.
+
+    This function expunges objects from 'db.session' which are in rows that
+    marked as 'ignored' before commit.
+    """
+    for row_converter in self.row_converters:
+      obj = row_converter.obj
+      try:
+        if row_converter.ignore and obj in db.session:
+          db.session.expunge(obj)
+      except UnmappedInstanceError:
+        continue
+
+  @staticmethod
+  def send_collection_post_signals(new_objects):
+    """Send bulk create pre-commit signals."""
+    if not new_objects:
+      return
+    collections = {}
+    for obj in new_objects:
+      collections.setdefault(obj.__class__, []).append(obj)
+    for object_class, objects in collections.iteritems():
+      Resource.collection_posted.send(
+          object_class,
+          objects=objects,
+          sources=[{} for _ in xrange(len(objects))],
+      )
 
   def save_import(self):
     """Commit all changes in the session and update memcache."""
     try:
       modified_objects = get_modified_objects(db.session)
+      import_event = log_event(db.session, None)
       update_memcache_before_commit(
           self, modified_objects, CACHE_EXPIRY_IMPORT)
       db.session.commit()
       update_memcache_after_commit(self)
       update_index(db.session, modified_objects)
+      return import_event
     except exc.SQLAlchemyError as err:
       db.session.rollback()
-      current_app.logger.error(
-          "Import failed with: {}".format(err.message))
+      logger.exception("Import failed with: %s", err.message)
       self.add_errors(errors.UNKNOWN_ERROR, line=self.offset + 2)
 
   def add_errors(self, template, **kwargs):
@@ -468,15 +553,12 @@ class BlockConverter(object):
   def _check_object(self, row_converter):
     """Check object if it has any pre commit checks.
 
-    Object will not be checked if there's already an error on and it's marked
-    as ignored. The check functions can mutate the row_converter object and
-    mark it to be ignored if there are any errors detected.
+    The check functions can mutate the row_converter object and mark it
+    to be ignored if there are any errors detected.
 
     Args:
       row_converter: Row converter for the row we want to check
     """
-    if row_converter.ignore:
-      return
-    checker = pre_commit_checks.CHECKS.get(row_converter.obj.type)
+    checker = pre_commit_checks.CHECKS.get(type(row_converter.obj).__name__)
     if checker and callable(checker):
       checker(row_converter)

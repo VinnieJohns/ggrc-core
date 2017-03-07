@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Provides an HTML cleaner function with sqalchemy compatible API"""
@@ -39,9 +39,11 @@ def cleaner(dummy, value, *_):
   Returns:
     Html (string) without unsafe tags.
   """
-  # Some cases like Request don't use the title value
-  #  and it's nullable, so check for that
+  # Some cases don't use the title value and it's nullable, so check for that
   if value is None:
+    return value
+  if not isinstance(value, basestring):
+    # no point in sanitizing non-strings
     return value
 
   parser = HTMLParser()

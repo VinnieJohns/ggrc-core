@@ -1,11 +1,11 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test import and export of objects with custom attributes."""
 
 from flask.json import dumps
 
-from integration.ggrc.converters import TestCase
+from integration.ggrc import TestCase
 from integration.ggrc.generator import ObjectGenerator
 from ggrc.models import AccessGroup
 from ggrc.models import Product
@@ -15,6 +15,8 @@ from ggrc.converters import errors
 class TestCustomAttributeImportExport(TestCase):
   """Test import and export with custom attributes."""
 
+  _set_up = True
+
   def setUp(self):
     """Setup stage for each test.
 
@@ -22,16 +24,14 @@ class TestCustomAttributeImportExport(TestCase):
     containing custom attributes. This stage also initializes a http client
     that is used for sending import/export requests.
     """
-    TestCase.setUp(self)
-    self.generator = ObjectGenerator()
-    self.create_custom_attributes()
-    self.create_people()
+    if TestCustomAttributeImportExport._set_up:
+      super(TestCustomAttributeImportExport, self).setUp()
+      self.generator = ObjectGenerator()
+      self.create_custom_attributes()
+      self.create_people()
     self.client.get("/login")
-    self.headers = {
-        'Content-Type': 'application/json',
-        "X-Requested-By": "gGRC",
-        "X-export-view": "blocks",
-    }
+    self.headers = ObjectGenerator.get_header()
+    TestCustomAttributeImportExport._set_up = False
 
   def create_custom_attributes(self):
     """Generate custom attributes needed for csv import
@@ -46,11 +46,12 @@ class TestCustomAttributeImportExport(TestCase):
     gen("product", attribute_type="Rich Text", title="normal RT")
     gen("product", attribute_type="Rich Text", title="man RT", mandatory=True)
     gen("product", attribute_type="Date", title="normal Date")
-    gen("product", attribute_type="Date", title="man Date", mandatory=True)
+    gen("product", attribute_type="Date", title="man Date", mandatory=True,
+        helptext="Birthday")
     gen("product", attribute_type="Checkbox", title="normal CH")
     gen("product", attribute_type="Checkbox", title="man CH", mandatory=True)
     gen("product", attribute_type="Dropdown", title="normal select",
-        options="a,b,c,d")
+        options=u"a,b,c,\u017e", helptext="Your favorite number.")
     gen("product", attribute_type="Dropdown", title="man select",
         options="e,f,g", mandatory=True)
     gen("product", attribute_type="Map:Person", title="normal person")
@@ -134,11 +135,11 @@ class TestCustomAttributeImportExport(TestCase):
         u"man text": u"edited man text",
         u"normal RT": u"some <br> edited rich <br> text",
         u"man RT": u"other edited <br> rich text",
-        u"normal Date": u"2017-09-14 00:00:00",
-        u"man Date": u"2018-01-17 00:00:00",
+        u"normal Date": u"2017-09-14",
+        u"man Date": u"2018-01-17",
         u"normal CH": u"1",
         u"man CH": u"0",
-        u"normal select": u"a",
+        u"normal select": u"\u017e",
         u"man select": u"f",
         u"normal person": u"Person",
         u"man person": u"Person",
@@ -170,7 +171,37 @@ class TestCustomAttributeImportExport(TestCase):
                                 headers=self.headers)
 
     self.assert200(response)
-    self.assertEqual(len(response.data.splitlines()), 21)
+    self.assertEqual(len(response.data.splitlines()), 33)
+    self.assertIn("\"Accepted values are", response.data)
+    self.assertIn("number.\n\nAccepted values are", response.data)
+    self.assertIn("Birthday", response.data)
+
+  def tests_ca_export_filters(self):
+    """Test filtering on custom attribute values."""
+
+    filename = "custom_attribute_tests.csv"
+    self.import_file(filename)
+
+    # TODO: there is a bug that imports do not index all custom attributes.
+    # After fixing this bug remove the following two lines.
+    from ggrc import views
+    views.do_reindex()
+
+    data = [{
+        "object_name": "Product",
+        "filters": {
+            "expression": {
+                "left": "normal text",
+                "op": {"name": "="},
+                "right": "some text",
+            },
+        },
+        "fields": "all",
+    }]
+    response = self.client.post("/_service/export_csv", data=dumps(data),
+                                headers=self.headers)
+    self.assert200(response)
+    self.assertIn("some text", response.data)
 
   def test_multi_word_object_with_ca(self):
     """Test multi-word (e.g. Access Group, Data Asset) object import"""

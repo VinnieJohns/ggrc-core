@@ -1,10 +1,8 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
-//= require can.jquery-all
-//= require models/cacheable
 (function (namespace, $) {
   can.Model.Cacheable('CMS.Models.Control', {
   // static properties
@@ -16,7 +14,8 @@
     create: 'POST /api/controls',
     update: 'PUT /api/controls/{id}',
     destroy: 'DELETE /api/controls/{id}',
-    mixins: ['ownable', 'contactable', 'unique_title'],
+    mixins: ['ownable', 'contactable', 'unique_title', 'ca_update',
+             'timeboxed'],
     is_custom_attributable: true,
     attributes: {
       context: 'CMS.Models.Context.stub',
@@ -24,8 +23,6 @@
       modified_by: 'CMS.Models.Person.stub',
       object_people: 'CMS.Models.ObjectPerson.stubs',
       people: 'CMS.Models.Person.stubs',
-      object_documents: 'CMS.Models.ObjectDocument.stubs',
-      documents: 'CMS.Models.Document.stubs',
       categories: 'CMS.Models.ControlCategory.stubs',
       assertions: 'CMS.Models.ControlAssertion.stubs',
       objectives: 'CMS.Models.Objective.stubs',
@@ -38,9 +35,7 @@
       verify_frequency: 'CMS.Models.Option.stub',
       principal_assessor: 'CMS.Models.Person.stub',
       secondary_assessor: 'CMS.Models.Person.stub',
-      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs',
-      start_date: 'date',
-      end_date: 'date'
+      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs'
     },
     links_to: {},
     defaults: {
@@ -48,12 +43,19 @@
       title: '',
       slug: '',
       description: '',
-      url: ''
+      url: '',
+      status: 'Draft'
     },
     tree_view_options: {
       show_view: GGRC.mustache_path + '/controls/tree.mustache',
-      footer_view: GGRC.mustache_path + '/controls/tree_footer.mustache',
+      attr_view: GGRC.mustache_path + '/controls/tree-item-attr.mustache',
+      footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
       attr_list: can.Model.Cacheable.attr_list.concat([
+        {
+          attr_title: 'Last Assessment Date',
+          attr_name: 'last_assessment_date',
+          order: 45 // between State and Primary Contact
+        },
         {attr_title: 'URL', attr_name: 'url'},
         {attr_title: 'Reference URL', attr_name: 'reference_url'},
         {attr_title: 'Effective Date', attr_name: 'start_date'},
@@ -68,12 +70,14 @@
           attr_sort_field: 'frequency.title'},
         {attr_title: 'Assertions', attr_name: 'assertions'},
         {attr_title: 'Categories', attr_name: 'categories'},
-        {attr_title: 'Principal Assessor', attr_name: 'principal_assessor',
+        {attr_title: 'Principal Assignee', attr_name: 'principal_assessor',
           attr_sort_field: 'principal_assessor.name|email'},
-        {attr_title: 'Secondary Assessor', attr_name: 'secondary_assessor',
+        {attr_title: 'Secondary Assignee', attr_name: 'secondary_assessor',
           attr_sort_field: 'secondary_assessor.name|email'}
       ]),
-      add_item_view: GGRC.mustache_path + '/controls/tree_add_item.mustache',
+      display_attr_names: ['title', 'owner', 'status', 'last_assessment_date'],
+      add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache',
+      show_related_assessments: true,
       draw_children: true,
       child_options: [{
         model: can.Model.Cacheable,
@@ -85,8 +89,7 @@
         draw_children: false
       }]
     },
-    statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-      'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+    statuses: ['Draft', 'Deprecated', 'Active'],
     init: function () {
       this.validateNonBlank('title');
       this._super.apply(this, arguments);

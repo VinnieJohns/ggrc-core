@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import re
@@ -89,7 +89,7 @@ class Person(CustomAttributable, CustomAttributeMapable, HasOwnContext,
   # Methods required by Flask-Login
     # pylint: disable=no-self-use
   def is_authenticated(self):
-    return True
+    return self.system_wide_role != 'No Access'
 
   def is_active(self):
     # pylint: disable=no-self-use

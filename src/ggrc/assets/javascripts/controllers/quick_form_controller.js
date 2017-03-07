@@ -1,397 +1,152 @@
 /*!
-    Copyright (C) 2016 Google Inc.
-    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-*/
-;(function(cam, $, GGRC) {
-
-GGRC.Controllers.Modals("GGRC.Controllers.QuickForm", {
-  defaults : {
-    model: null,
-    instance: null
-  }
-}, {
-  init: function () {
-    if(this.options.instance && !this.options.model) {
-      this.options.model = this.options.instance.constructor;
+ Copyright (C) 2017 Google Inc.
+ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+(function (can, $, GGRC) {
+  GGRC.Controllers.Modals('GGRC.Controllers.QuickForm', {
+    defaults: {
+      model: null,
+      instance: null
     }
-    this.options.$content = this.element;
-    if (this.element.data("force-refresh")) {
-      this.options.instance.refresh();
-    }
-  },
-  "input, textarea, select change": function (el, ev) {
-    if (el.data("toggle") === "datepicker") {
-      var val = el.datepicker("getDate"),
-          prop = el.attr("name"),
-          old_value = this.options.instance.attr(prop);
-
-          if (moment(val).isSame(old_value)) {
-            return;
-          }
-          $.when(this.options.instance.refresh()).then(function () {
-            this.options.instance.attr(prop, val);
-            this.options.instance.save();
-          }.bind(this));
-      return;
-    }
-    if (!el.is("[data-lookup]")) {
-      this.set_value_from_element(el);
-      setTimeout(function () {
-        this.options.instance.save();
-      }.bind(this), 100);
-    }
-  },
-  autocomplete_select: function (el, event, ui) {
-    var prop = el.attr("name").split(".").slice(0, -1).join(".");
-    if (this._super.apply(this, arguments) !== false) {
-      setTimeout(function () {
-        this.options.instance.save().then(function () {
-          var obj = this.options.instance.attr(prop);
-          if (obj.attr) {
-            obj.attr("saved", true);
-          }
-        }.bind(this));
-      }.bind(this), 100);
-    } else {
-      return false;
-    }
-  },
-  "input, select, textarea click": function (el, ev) {
-    if (el.data("toggle") === "datepicker") {
-      return;
-    }
-    this._super && this._super.apply(this, arguments);
-    ev.stopPropagation();
-  },
-  ".dropdown-menu > li click": function (el, ev) {
-    ev.stopPropagation();
-    var that = this;
-    this.set_value({ name: el.data('name'), value: el.data('value') });
-    setTimeout(function() {
-      that.options.instance.save();
-      $(el).closest(".open").removeClass("open");
-    }, 100);
-  }
-
-  , "button[data-name][data-value]:not(.disabled), a.undoable[data-toggle*=modal] click": function(el, ev) {
-
-    var that = this
-      , name = el.data('name')
-      , old_value = {};
-
-
-    if(el.data('openclose')){
-      var action = el.data('openclose'),
-          main = el.closest('.item-main'),
-          openclose = main.find('.openclose'),
-          isOpened = openclose.hasClass('active');
-
-      // We can't use main.openclose(action) here because content may not be loaded yet
-      if(action === 'trigger'){
-        openclose.trigger('click');
+  }, {
+    init: function () {
+      if (this.options.instance && !this.options.model) {
+        this.options.model = this.options.instance.constructor;
       }
-      else if(action === 'close' && isOpened){
-        openclose.trigger('click');
+      this.options.$content = this.element;
+      if (this.element.data('force-refresh')) {
+        this.options.instance.refresh();
       }
-      else if(action === 'open' && !isOpened){
-        openclose.trigger('click');
-      }
-    }
-
-    old_value[el.data("name")] = this.options.instance.attr(el.data("name"));
-    if(el.data("also-undo")) {
-      can.each(el.data("also-undo").split(","), function(attrname) {
-        attrname = attrname.trim();
-        old_value[attrname] = that.options.instance.attr(attrname);
-      });
-    }
-
-    // Check if the undo button was clicked:
-    this.options.instance.attr('_undo') || that.options.instance.attr('_undo', []);
-
-    if(el.is("[data-toggle*=modal")) {
-      setTimeout(function() {
-        $(".modal:visible").one("modal:success", function() {
-          that.options.instance.attr('_undo').unshift(old_value);
-        });
-      }, 100);
-    } else {
-      ev.stopPropagation();
-      that.options.instance.attr('_undo').unshift(old_value);
-
-    that.options.instance.attr('_disabled', 'disabled');
-    that.options.instance.refresh().then(function(instance){
-      that.set_value({ name: el.data('name'), value: el.data('value') });
-      return instance.save();
-    }).then(function(){
-      that.options.instance.attr('_disabled', '');
-    });
-  }
-  }
-
-
-  , "a.undo click" : function(el, ev){
-    ev.stopPropagation();
-    var that = this
-      , name = el.data('name')
-      , old_value = this.options.instance.attr(name) || "";
-
-    new_value = that.options.instance.attr('_undo').shift();
-    that.options.instance.attr('_disabled', 'disabled');
-    that.options.instance.refresh().then(function(instance){
-      can.each(new_value, function(value, name) {
-        that.set_value({ name: name, value: value });
-      });
-      return instance.save();
-    }).then(function(){
-      that.options.instance.attr('_disabled', '');
-    });
-  }
-});
-
-/*
-  Below this line we're defining a few can.Components, which are in this file
-  because they work similarly to the quick form controller (in fact, you should
-  expect the quick form controller to be refactored into a component in the
-  future) but they share no code with the quick form controller.
-
-  the first component is quick add.  It is meant to have one or more form elements
-  and a data-toggle="submit" link which will create a new join object between
-  the parent instance and some selected option instance (likely picked through an
-  autocomplete dropdown).
-
-  Technically you can choose your instance however you want, as long as you find
-  some way of getting its value into the component scope.  Extending this component
-  with other methods to do that is fine.  You can also just pass it in when
-  instantiating the component.
-*/
-can.Component.extend({
-  tag: "ggrc-quick-add",
-  // <content> in a component template will be replaced with whatever is contained
-  //  within the component tag.  Since the views for the original uses of these components
-  //  were already created with content, we just used <content> instead of making
-  //  new view template files.
-  template: "<content/>",
-  scope: {
-    parent_instance: null,
-    source_mapping: null,
-    deferred: "@",
-    join_model: "@",
-    model: null,
-    delay: "@",
-    quick_create: "@",
-    verify_event: "@",
-    modal_description: "@",
-    modal_title: "@",
-    modal_button: "@",
-    attributes: {},
-    create_url: function() {
-      var value = this.element.find("input[type='text']").val();
-      return new CMS.Models.Document({
-        link: value,
-        title: value,
-        context: this.scope.parent_instance.context || new CMS.Models.Context({id : null}),
-        owners: [CMS.Models.Person.findInCacheById(GGRC.current_user.id)],
-      });
     },
-  },
-  events: {
-    init: function() {
-      this.scope.attr("controller", this);
-    },
-    // The inserted event fires when the component content is added to the DOM.
-    //  At this time, live bound rendering should be resolved, which is not the
-    //  case during init.
-    inserted: function (el) {
-      this.element.find("input:not([data-mapping], [data-lookup])").each(function(i, el) {
-        this.scope.attributes.attr($(el).attr("name"), $(el).val());
-      }.bind(this));
-    },
-    "a[data-toggle=submit]:not(.disabled) click": function (el, ev) {
-      var scope = this.scope,
-          join_model_class,
-          join_object,
-          quick_create,
-          created_dfd,
-          verify_dfd = $.Deferred();
+    'input, textarea, select change': function (el) {
+      var self = this;
+      var val;
+      var prop;
+      var oldValue;
+      if (el.data('toggle') === 'datepicker') {
+        val = el.datepicker('getDate');
+        prop = el.attr('name');
+        oldValue = this.options.instance.attr(prop);
 
-      if (scope.attr("verify_event")) {
-        GGRC.Controllers.Modals.confirm({
-          modal_description: scope.attr("modal_description"),
-          modal_confirm: scope.attr("modal_button"),
-          modal_title: scope.attr("modal_title"),
-          button_view : GGRC.mustache_path + "/quick_form/confirm_buttons.mustache",
-        }, verify_dfd.resolve);
-      } else {
-        verify_dfd.resolve();
-      }
-
-      verify_dfd.done(function () {
-        if (this.scope.quick_create && this.scope.quick_create !== "@") {
-          quick_create = this.scope[this.scope.quick_create].bind(this);
-          if (quick_create) {
-            created_dfd = quick_create();
-            if (!this.scope.deferred) {
-              created_dfd = created_dfd.save().then(function(data){
-                this.scope.attr("instance", data);
-              }.bind(this));
-            }
-          }
-        }
-        if (!created_dfd) {
-          created_dfd = $.Deferred().resolve();
-        }
-
-        if (this.scope.deferred) {
-          this.scope.parent_instance.mark_for_addition("related_objects_as_source", created_dfd);
-          el.trigger("modal:success", created_dfd);
+        if (moment(val).isSame(oldValue)) {
           return;
         }
-
-        created_dfd.then(function() {
-          if (this.scope.join_model && this.scope.join_model !== "@") {
-            join_model_class = CMS.Models[this.scope.join_model] || CMS.ModelHelpers[this.scope.join_model];
-            join_object = {};
-            if (this.scope.join_model === "Relationship") {
-              join_object["source"] = this.scope.parent_instance;
-              join_object["destination"] = this.scope.instance;
-            } else {
-              join_object[this.scope.instance.constructor.table_singular] = this.scope.instance;
+        can.when(this.options.instance.refresh()).then(function () {
+          self.options.instance.attr(prop, val);
+          self.options.instance.save();
+        });
+        return;
+      }
+      if (!el.is('[data-lookup]')) {
+        this.set_value_from_element(el);
+        setTimeout(function () {
+          this.options.instance.save();
+        }.bind(this), 100);
+      }
+    },
+    autocomplete_select: function (el, event, ui) {
+      var self = this;
+      var prop = el.attr('name').split('.').slice(0, -1).join('.');
+      if (this._super.apply(this, arguments) !== false) {
+        setTimeout(function () {
+          self.options.instance.save().then(function () {
+            var obj = self.options.instance.attr(prop);
+            if (obj.attr) {
+              obj.attr('saved', true);
             }
-            join_object = new join_model_class($.extend(
-              join_object,
-              {
-                context: this.scope.parent_instance.context
-                            || new CMS.Models.Context({id : null}),
-              },
-              this.scope.attributes.serialize()
-            ));
-          } else {
-            join_object = GGRC.Mappings.make_join_object(
-              this.scope.parent_instance,
-              this.scope.instance || this.scope.attributes.instance,
-              $.extend({
-                context : this.scope.parent_instance.context
-                          || new CMS.Models.Context({id : null})
-                        },
-                        this.scope.attributes.serialize())
-            );
-          }
-          this.bindXHRToButton(
-            join_object.save().done(function() {
-              el.trigger("modal:success", join_object);
-            }),
-            el
-            );
-        }.bind(this));
-      }.bind(this));
-    },
-    // this works like autocomplete_select on all modal forms and
-    //  descendant class objects.
-    autocomplete_select: function(el, event, ui) {
-      var that = this;
-      setTimeout(function() {
-        that.scope.attr(el.attr("name"), ui.item);
-      });
-    },
-    "input[null-if-empty] change" : function(el) {
-      if (!el.val()) {
-        this.scope.attributes.attr(el.attr("name"), null);
-      }
-    },
-    "input:not([data-mapping], [data-lookup]) change" : function(el) {
-      this.scope.attributes.attr(el.attr("name"), el.val());
-    },
-    ".ui-autocomplete-input modal:success" : function(el, ev, data, options) {
-      var that = this,
-        multi_map = data.multi_map,
-        join_model_class,
-        join_object;
-
-      if(multi_map){
-        var length = data.arr.length,
-            my_data;
-
-        if (length == 1){
-          my_data = data.arr[0];
-
-          GGRC.Mappings.make_join_object(
-            this.scope.parent_instance,
-            my_data,
-            $.extend({
-              context : this.scope.parent_instance.context
-                      || new CMS.Models.Context({id : null})
-                      },
-                      this.scope.attributes.serialize())
-          ).save().done(function() {
-            that.element.find("a[data-toggle=submit]").trigger("modal:success");
           });
-        }
-
-        else{
-          for(var i = 0; i < length-1; i++){
-            my_data = data.arr[i];
-
-            GGRC.Mappings.make_join_object(
-              this.scope.parent_instance,
-              my_data,
-              $.extend({
-                context : this.scope.parent_instance.context
-                        || new CMS.Models.Context({id : null})
-                        },
-                        this.scope.attributes.serialize())
-            ).save().done(function(){});
-          }
-          my_data = data.arr[length-1];
-          GGRC.Mappings.make_join_object(
-            this.scope.parent_instance,
-            my_data,
-            $.extend({
-              context : this.scope.parent_instance.context
-                      || new CMS.Models.Context({id : null})
-                      },
-                      this.scope.attributes.serialize())
-          ).save().done(function() {
-            that.element.find("a[data-toggle=submit]").trigger("modal:success");
-          });
-        }
-        //end multi-map
+        }, 100);
       } else {
+        return false;
+      }
+    },
+    'input, select, textarea click': function (el, ev) {
+      if (el.data('toggle') === 'datepicker') {
+        return;
+      }
+      if (this._super) {
+        this._super.apply(this, arguments);
+      }
+      ev.stopPropagation();
+    },
+    '.dropdown-menu > li click': function (el, ev) {
+      var self = this;
+      ev.stopPropagation();
+      this.set_value({name: el.data('name'), value: el.data('value')});
+      setTimeout(function () {
+        self.options.instance.save();
+        $(el).closest('.open').removeClass('open');
+      }, 100);
+    },
+    'button[data-name][data-value]:not(.disabled), a.undoable[data-toggle*=modal] click': function (el, ev) {
+      var self = this;
+      var name = el.data('name');
+      var oldValue = {};
+      var action;
+      var openclose;
+      var isOpened;
 
-        if (this.scope.join_model && this.scope.join_model !== "@") {
-          join_model_class = CMS.Models[this.scope.join_model] || CMS.ModelHelpers[this.scope.join_model];
-          join_object = new join_model_class(this.scope.attributes.serialize());
-        } else {
-          join_object = GGRC.Mappings.make_join_object(
-            this.scope.parent_instance,
-            data,
-            $.extend({
-              context : this.scope.parent_instance.context
-                        || new CMS.Models.Context({id : null})
-                      },
-                      this.scope.attributes.serialize())
-          );
+      if (el.data('openclose')) {
+        action = el.data('openclose');
+        openclose = el.closest('.item-main').find('.openclose');
+        isOpened = openclose.hasClass('active');
+
+        // We can't use main.openclose(action) here because content may not be loaded yet
+        if (action === 'trigger') {
+          openclose.trigger('click');
+        } else if (action === 'close' && isOpened) {
+          openclose.trigger('click');
+        } else if (action === 'open' && !isOpened) {
+          openclose.trigger('click');
         }
-        join_object.save().done(function() {
-           that.element.find("a[data-toggle=submit]").trigger("modal:success");
+      }
+
+      oldValue[name] = this.options.instance.attr(name);
+      if (el.data('also-undo')) {
+        can.each(el.data('also-undo').split(','), function (attrname) {
+          attrname = attrname.trim();
+          oldValue[attrname] = self.options.instance.attr(attrname);
         });
       }
-    }
-  },
-  helpers: {
-    // Mapping-based autocomplete selectors use this helper to
-    //  attach the mapping autocomplete ui widget.  These elements should
-    //  be decorated with data-mapping attributes.
-    mapping_autocomplete : function(options) {
-      return function(el) {
-        var $el = $(el);
-        $el.ggrc_mapping_autocomplete({
-          controller : options.contexts.attr("controller"),
-          model : $el.data("model"),
-          mapping : false
+
+      // Check if the undo button was clicked:
+      self.options.instance.attr('_undo') || self.options.instance.attr('_undo', []);
+
+      if (el.is('[data-toggle*=modal')) {
+        setTimeout(function () {
+          $('.modal:visible').one('modal:success', function () {
+            self.options.instance.attr('_undo').unshift(oldValue);
+          });
+        }, 100);
+      } else {
+        ev.stopPropagation();
+        self.options.instance.attr('_undo').unshift(oldValue);
+
+        self.options.instance.attr('_disabled', 'disabled');
+        self.options.instance.refresh().then(function (instance) {
+          self.set_value({name: el.data('name'), value: el.data('value')});
+          return instance.save();
+        }).then(function () {
+          self.options.instance.attr('_disabled', '');
         });
-      };
+      }
+    },
+    'a.undo click': function (el, ev) {
+      var self = this;
+      var newValue = this.options.instance.attr('_undo').shift();
+      ev.stopPropagation();
+
+      this.options.instance.attr('_disabled', 'disabled');
+      this.options.instance
+        .refresh()
+        .then(function (instance) {
+          can.each(newValue, function (value, name) {
+            self.set_value({name: name, value: value});
+          });
+          return instance.save();
+        }).then(function () {
+          self.options.instance.attr('_disabled', '');
+        });
     }
-  },
-});
-})(this.can, this.can.$, this.GGRC);
+  });
+})(window.can, window.can.$, window.GGRC);

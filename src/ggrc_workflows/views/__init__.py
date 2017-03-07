@@ -1,9 +1,11 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Ggrc workflow module views."""
 
 from datetime import date
+from logging import getLogger
+
 from flask import redirect
 from flask import render_template
 from flask import url_for
@@ -21,14 +23,35 @@ from ggrc_workflows.models import CycleTaskGroupObjectTask
 from ggrc_workflows.models import Workflow
 
 
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
+
+
 def get_user_task_count():
   with benchmark("Get user task count RAW"):
     current_user = get_current_user()
-    return CycleTaskGroupObjectTask.query.join(Cycle).filter(
+
+    user_tasks = CycleTaskGroupObjectTask.query.with_entities(
+        # prefetch tasks' finishing dates to avoid firing subsequent queries
+        CycleTaskGroupObjectTask.end_date
+    ).join(
+        Cycle
+    ).filter(
         CycleTaskGroupObjectTask.contact_id == current_user.id,
         CycleTaskGroupObjectTask.status.in_(
             ["Assigned", "InProgress", "Finished", "Declined"]),
-        Cycle.is_current == True).count()  # noqa # pylint: disable=singleton-comparison
+        Cycle.is_current == True  # noqa # pylint: disable=singleton-comparison
+    ).all()
+
+    task_count = len(user_tasks)
+
+    today = date.today()
+    overdue_count = sum(
+        1 for task in user_tasks if task.end_date and today > task.end_date)
+
+    # NOTE: the return value must be a list so that the result can be
+    # directly JSON-serialized to an Array in a HAML template
+    return [task_count, overdue_count]
 
 
 @app.context_processor
@@ -48,7 +71,7 @@ def _get_unstarted_workflows():
   """
   return db.session.query(Workflow).filter(
       Workflow.next_cycle_start_date < date.today(),
-      Workflow.recurrences.is_(True),
+      Workflow.recurrences == 1,
       Workflow.status == 'Active',
   ).all()
 
@@ -83,11 +106,11 @@ def start_unstarted_cycles():
     # We must skip tasks that don't have start days and end days defined
     if ((not all(tasks_start_days) and not all(tasks_end_days)) or
             (not tasks_start_days and not tasks_end_days)):
-      app.logger.info(
-          "Skipping workflow {0} (ID: {1}) because it doesn't "
-          "have relative start and end days specified".format(
-              workflow.title,
-              workflow.id))
+      logger.info(
+          "Skipping workflow %s (ID: %s) because it doesn't "
+          "have relative start and end days specified",
+          workflow.title, workflow.id,
+      )
       continue
 
     workflow.next_cycle_start_date = date.today()

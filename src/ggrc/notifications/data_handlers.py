@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Data handlers for notifications for objects in ggrc module.
@@ -9,9 +9,14 @@ Main contributed functions are:
 
 import datetime
 import urlparse
+from logging import getLogger
 
 from ggrc import models
 from ggrc import utils
+
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 
 def get_object_url(obj):
@@ -42,17 +47,15 @@ def _get_assignable_dict(people, notif):
   obj = get_notification_object(notif)
   data = {}
   for person in people:
-    # Requests have "requested_on" field instead of "start_date" and we should
-    # default to today() if no appropriate field is found on the object.
-    start_date = getattr(obj, "start_date",
-                         getattr(obj, "requested_on",
-                                 datetime.date.today()))
+    # We should default to today() if no start date is found on the object.
+    start_date = getattr(obj, "start_date", datetime.date.today())
     data[person.email] = {
         "user": get_person_dict(person),
         notif.notification_type.name: {
             obj.id: {
                 "title": obj.title,
-                "fuzzy_start_date": utils.get_fuzzy_date(start_date),
+                "start_date_statement": utils.get_digest_date_statement(
+                    start_date, "start", True),
                 "url": get_object_url(obj),
             }
         }
@@ -70,6 +73,33 @@ def assignable_open_data(notif):
     A dict containing all notification data for the given notification.
   """
   obj = get_notification_object(notif)
+  if not obj:
+    logger.warning(
+        '%s for notification %s not found.',
+        notif.object_type, notif.id,
+    )
+    return {}
+  people = [person for person, _ in obj.assignees]
+
+  return _get_assignable_dict(people, notif)
+
+
+def assignable_updated_data(notif):
+  """Get data for updated assignable object.
+
+  Args:
+    notif (Notification): Notification entry for an open assignable object.
+
+  Returns:
+    A dict containing all notification data for the given notification.
+  """
+  obj = get_notification_object(notif)
+  if not obj:
+    logger.warning(
+        '%s for notification %s not found.',
+        notif.object_type, notif.id,
+    )
+    return {}
   people = [person for person, _ in obj.assignees]
 
   return _get_assignable_dict(people, notif)
@@ -85,10 +115,7 @@ def _get_declined_people(obj):
     A list of people that should receive a declined notification according to
     the given object type.
   """
-  if obj.type == "Request":
-    return [person for person, role in obj.assignees
-            if "Requester" in role]
-  elif obj.type == "Assessment":
+  if obj.type == "Assessment":
     return [person for person, role in obj.assignees
             if "Assessor" in role]
   return []
@@ -189,14 +216,28 @@ def get_assignable_data(notif):
     Dict with all data for the assignable notification or an empty dict if the
     notification is not for a valid assignable object.
   """
-  if notif.object_type not in {"Request", "Assessment"}:
+  if notif.object_type not in {"Assessment"}:
     return {}
-  elif notif.notification_type.name.endswith("_open"):
-    return assignable_open_data(notif)
-  elif notif.notification_type.name.endswith("_declined"):
-    return assignable_declined_data(notif)
-  elif notif.notification_type.name.endswith("_reminder"):
-    return assignable_reminder(notif)
+
+  # a map of notification type suffixes to functions that fetch data for those
+  # notification types
+  data_handlers = {
+      "_open": assignable_open_data,
+      "_updated": assignable_updated_data,
+      "_completed": assignable_updated_data,
+      "_ready_for_review": assignable_updated_data,
+      "_verified": assignable_updated_data,
+      "_reopened": assignable_updated_data,
+      "_declined": assignable_declined_data,
+      "_reminder": assignable_reminder,
+  }
+
+  notif_type = notif.notification_type.name
+
+  for suffix, data_handler in data_handlers.iteritems():
+    if notif_type.endswith(suffix):
+      return data_handler(notif)
+
   return {}
 
 
@@ -233,12 +274,14 @@ def get_comment_data(notif):
   data = {}
   recipients = set()
   comment = get_notification_object(notif)
-  rel = (models.Relationship.find_related(comment, models.Request()) or
-         models.Relationship.find_related(comment, models.Assessment()))
+  comment_obj = None
+  rel = models.Relationship.find_related(comment, models.Assessment())
 
   if rel:
-    comment_obj = (rel.Request_destination or rel.Request_source or
-                   rel.Assessment_destination or rel.Assessment_source)
+    comment_obj = rel.Assessment_destination or rel.Assessment_source
+  if not comment_obj:
+    logger.warning('Comment object not found for notification %s', notif.id)
+    return {}
 
   if comment_obj.recipients:
     recipients = set(comment_obj.recipients.split(","))

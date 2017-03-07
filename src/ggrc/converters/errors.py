@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """List of all error and warning messages for imports."""
@@ -38,9 +38,6 @@ MAP_UNMAP_CONFLICT = (u"Line {line}: Object '{slug}' scheduled for mapping and"
 UNKNOWN_OBJECT = (u"Line {line}: {object_type} '{slug}' doesn't exist, so it"
                   u" can't be mapped/unmapped.")
 
-WHITESPACE_WARNING = (u"Line {line}: Field {column_name} contains multiple"
-                      u"spaces together, that will be merged into one.")
-
 UNKNOWN_USER_WARNING = (u"Line {line}: Specified user '{email}' does not "
                         u"exist. That user will be ignored.")
 
@@ -52,6 +49,10 @@ WRONG_MULTI_VALUE = (u"Line {line}: {column_name} contains invalid line. The"
 
 WRONG_VALUE = (u"Line {line}: Field '{column_name}' contains invalid data. The"
                u" value will be ignored.")
+
+WRONG_VALUE_DEFAULT = (u"Line {line}: Field '{column_name}' contains invalid"
+                       u" data. The default value will be used.")
+
 
 WRONG_VALUE_ERROR = (u"Line {line}: Field '{column_name}' contains invalid "
                      u"data. The line will be ignored.")
@@ -80,9 +81,6 @@ DELETE_CASCADE_ERROR = (u"Line {line}: Cannot delete object {object_type}:"
 
 UNKNOWN_ERROR = u"Line {line}: Import failed due to unknown error."
 
-REQUEST_INVALID_STATE = (u"Line {line}: Can not set Request state to Completed"
-                         u" or Verified via imports.")
-
 INVALID_START_END_DATES = (u"Line {line}: {start_date} can not be after "
                            u"{end_date}. The line will be ignored.")
 
@@ -102,3 +100,25 @@ UNSUPPORTED_OPERATION_ERROR = (u"Line {line}: {operation} is not supported. "
 
 INVALID_ATTRIBUTE_WARNING = (u"Line {line}: Object does not contain attribute "
                              u"'{column_name}'. The value will be ignored.")
+
+CREATE_INSTANCE_ERROR = (u"Line {line}: New instance creation is denied. "
+                         u"The line will be ignored.")
+
+INVALID_STATUS_DATE_CORRELATION = (u"Line {line}: Cannot change {date} for "
+                                   u"task which status is {status}. "
+                                   u"The line will be ignored.")
+
+ONLY_IMPORTABLE_COLUMNS_WARNING = (u"Line {line}: Only the following "
+                                   u"attributes are importable: {columns}. "
+                                   u"All other columns will be ignored.")
+
+EXPORT_ONLY_WARNING = (u"Line {line}: Field '{column_name}' "
+                       u"can not be imported. The value will be ignored.")
+
+ILLIGAL_REMOVE_CONTROL_VALUE = ("Line {line}: "
+                                "System does not allow to unmap control")
+
+ILLIGAL_APPEND_CONTROL_VALUE = ("Line {line}: "
+                                "System does not allow to map control to "
+                                "{object_type}, because this control is not "
+                                "mapped to related audit.")

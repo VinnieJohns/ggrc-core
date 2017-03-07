@@ -1,14 +1,14 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
-"""All gGRC REST services."""
+"""All GGRC REST services."""
 
 from ggrc.services.common import ReadOnlyResource
 from ggrc.services.registry import service
 
 
 def contributed_services():
-  """The list of all gGRC collection services as a list of
+  """The list of all GGRC collection services as a list of
   (url, ModelClass) tuples.
   """
   import ggrc.models.all_models as models
@@ -54,7 +54,6 @@ def contributed_services():
       service('projects', models.Project),
       service('programs', models.Program),
       service('relationships', models.Relationship),
-      service('requests', models.Request),
       service('revisions', models.Revision, ReadOnlyResource),
       service('sections', models.Section),
       service('clauses', models.Clause),
@@ -64,6 +63,7 @@ def contributed_services():
       service('processes', models.Process),
       service('notification_configs', models.NotificationConfig),
       service('issues', models.Issue),
+      service('snapshots', models.Snapshot),
   ]
 
 
@@ -88,17 +88,13 @@ def init_extra_services(app):
   app.add_url_rule(
       '/search', 'search', login_required(search))
 
-  from .log_event import log_event
-  app.add_url_rule(
-      '/api/log_events', 'log_events', log_event, methods=['POST'])
-
   from .description import ServiceDescription
   app.add_url_rule(
       '/api', view_func=ServiceDescription.as_view('ServiceDescription'))
 
 
 def init_all_services(app):
-  """Register all gGRC REST services with the Flask application ``app``."""
+  """Register all GGRC REST services with the Flask application ``app``."""
   from ggrc.extensions import get_extension_modules
   from ggrc.login import login_required
 

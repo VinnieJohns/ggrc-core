@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Test api helper.
@@ -29,7 +29,7 @@ class Api(object):
     self.tc.get("/login")
     self.resource = Resource()
     self.headers = {'Content-Type': 'application/json',
-                    "X-Requested-By": "gGRC"
+                    "X-Requested-By": "GGRC"
                     }
     self.user_headers = {}
     self.person_name = None
@@ -78,7 +78,7 @@ class Api(object):
     json_data = self.resource.as_json(data)
     logging.info("request json" + json_data)
     response = request(api_link, data=json_data, headers=headers.items())
-    if response.status_code == 302:
+    if response.status_code == 401:
       self.set_user()
       response = request(api_link, data=json_data, headers=headers.items())
     return self.data_to_json(response)
@@ -120,6 +120,8 @@ class Api(object):
       response, db.Model: The put response from the server and the modified
         object if the put request was successful.
     """
+    if data is None:
+      data = {}
     obj_dict = builder.json.publish(obj)
     builder.json.publish_representation(obj_dict)
     obj_dict.update(data)

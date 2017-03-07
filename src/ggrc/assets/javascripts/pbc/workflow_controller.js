@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -14,23 +14,21 @@
         instance.custom_attribute_definitions.length);
     },
     '{CMS.Models.Issue} created': function (model, ev, instance) {
-      var auditDfd;
-      var controlDfd;
-      var programDfd;
-      var assessmentDfd;
+      var dfd;
 
       if (!(instance instanceof CMS.Models.Issue)) {
         return;
       }
 
       this._after_pending_joins(instance, function () {
-        auditDfd = this._create_relationship(instance, instance.audit);
-        controlDfd = this._create_relationship(instance, instance.control);
-        programDfd = this._create_relationship(instance, instance.program);
-        assessmentDfd = this._create_relationship(
-          instance, instance.assessment);
-        instance.delay_resolving_save_until($.when(auditDfd, controlDfd,
-            programDfd, assessmentDfd));
+        dfd = instance.relatedSnapshots ?
+          instance.relatedSnapshots.map(function (item) {
+            return this._create_relationship(instance, item);
+          }.bind(this)) :
+          [];
+        dfd.push(this._create_relationship(instance, instance.audit));
+        dfd.push(this._create_relationship(instance, instance.assessment));
+        instance.delay_resolving_save_until($.when.apply($, dfd));
       }.bind(this));
     },
     '{CMS.Models.Section} created': function (model, ev, instance) {
@@ -76,13 +74,6 @@
         }).save();
       });
       instance.delay_resolving_save_until(dfd);
-    },
-    '{CMS.Models.Assessment} created': function (model, ev, instance) {
-      if (!(instance instanceof CMS.Models.Assessment)) {
-        return;
-      }
-
-      instance.delay_resolving_save_until(Permission.refresh());
     },
     _after_pending_joins: function (instance, callback) {
       var dfd = instance.attr('_pending_joins_dfd');

@@ -1,15 +1,19 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
-from ggrc import db
+from sqlalchemy import orm
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
+
+
+from ggrc import db
+from ggrc.models import reflection
 from ggrc.models.deferred import deferred
-from ggrc.models.mixins import Mapping, Timeboxed
-from ggrc.models.reflection import PublishOnly
+from ggrc.models.mixins import Base
+from ggrc.models.mixins import Timeboxed
 
 
-class ObjectDocument(Timeboxed, Mapping, db.Model):
+class ObjectDocument(Timeboxed, Base, db.Model):
   __tablename__ = 'object_documents'
 
   role = deferred(db.Column(db.String), 'ObjectDocument')
@@ -72,8 +76,6 @@ class ObjectDocument(Timeboxed, Mapping, db.Model):
 
   @classmethod
   def eager_query(cls):
-    from sqlalchemy import orm
-
     query = super(ObjectDocument, cls).eager_query()
     return query.options(
         orm.subqueryload('document'))
@@ -103,7 +105,7 @@ class Documentable(object):
     )
 
   _publish_attrs = [
-      PublishOnly('documents'),
+      reflection.PublishOnly('documents'),
       'object_documents',
   ]
 
@@ -113,8 +115,35 @@ class Documentable(object):
 
   @classmethod
   def eager_query(cls):
-    from sqlalchemy import orm
-
     query = super(Documentable, cls).eager_query()
     return cls.eager_inclusions(query, Documentable._include_links).options(
         orm.subqueryload('object_documents'))
+
+
+class EvidenceURL(Documentable):
+  """Documentable mixin for evidence and URL documents."""
+
+  _aliases = {
+      "document_url": {
+          "display_name": "Url",
+          "filter_by": "_filter_by_url",
+          "type": reflection.AttributeInfo.Type.SPECIAL_MAPPING,
+          "description": "New line separated list of URLs.",
+      },
+      "document_evidence": {
+          "display_name": "Evidence",
+          "filter_by": "_filter_by_evidence",
+          "type": reflection.AttributeInfo.Type.SPECIAL_MAPPING,
+          "description": ("New line separated list of evidence links and "
+                          "titles.\nExample:\n\nhttp://my.gdrive.link/file "
+                          "Title of the evidence link"),
+      },
+  }
+
+  @classmethod
+  def _filter_by_url(cls, _):
+    return None
+
+  @classmethod
+  def _filter_by_evidence(cls, _):
+    return None

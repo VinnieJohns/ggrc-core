@@ -1,5 +1,5 @@
 {#
-Copyright (C) 2016 Google Inc.
+Copyright (C) 2017 Google Inc.
 Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 #}
   {% import 'notifications/style.html' as style %}
@@ -86,7 +86,7 @@ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
                   {% for task in digest['due_soon'].values() %}
                     <li {{ style.list_item() }} >
                       <a href="{{ task['cycle_task_url'] }}" {{ style.link_text() }} >
-                      {{ task['title'] }}</a> due {{ task['fuzzy_due_in'] }}
+                      {{ task['title'] }}</a> {{ task['due_date_statement'] }}
                       <ul>
                       {% for related_object_title in task['related_objects'] %}
                         <li>{{ "%s" % related_object_title if related_object_title }}</li>
@@ -156,24 +156,75 @@ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
                       New cycle of
                       <a href="{{ workflow['workflow_url'] }}" {{ style.link_text() }} >
                         {{ workflow['title'] }}</a>
-                      starts {{ workflow['fuzzy_start_date'] }}.
+                      {{ workflow['start_date_statement'] }}.
                     </li>
                   {% endfor %}
                   </ul>
                 {% endif %}
 
                 {% if digest.get('assessment_open') %}
-                  <h2 {{ style.sub_title() }} >New assessments are created</h2>
+                  <h2 {{ style.sub_title() }} >New assessments were created</h2>
                   <ul {{ style.list_wrap() }} >
                   {% for assessment_id, assessment_data in digest['assessment_open'].iteritems() %}
                     <li {{ style.list_item() }} >
                       Assessment:
                       <a href="{{ assessment_data['url'] }}" {{ style.link_text() }} >
-                        {{ assessment_data['title'] }}
-                      </a>
-                      {% if assessment_data.get('fuzzy_start_date') %}
-                        starts {{ assessment_data['fuzzy_start_date'] }}.
+                        {{ assessment_data['title'] }}</a>
+                      {% if assessment_data.get('start_date_statement') %}
+                        {{ assessment_data['start_date_statement'] }}.
                       {% endif %}
+                    </li>
+                  {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {% if digest.get('assessment_updated') %}
+                  <h2 {{ style.sub_title() }} >Assessments have been updated</h2>
+                  <ul {{ style.list_wrap() }} >
+                  {% for assessment_id, assessment_data in digest['assessment_updated'].iteritems() %}
+                    <li {{ style.list_item() }} >
+                      Assessment:
+                      <a href="{{ assessment_data['url'] }}" {{ style.link_text() }} >
+                        {{ assessment_data['title'] }}</a>
+                    </li>
+                  {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {% if digest.get('assessment_completed') %}
+                  <h2 {{ style.sub_title() }} >Completed assessments</h2>
+                  <ul {{ style.list_wrap() }} >
+                  {% for assessment_id, assessment_data in digest['assessment_completed'].iteritems() %}
+                    <li {{ style.list_item() }} >
+                      Assessment:
+                      <a href="{{ assessment_data['url'] }}" {{ style.link_text() }} >
+                        {{ assessment_data['title'] }}</a>
+                    </li>
+                  {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {% if digest.get('assessment_ready_for_review') %}
+                  <h2 {{ style.sub_title() }} >Assessments ready for review</h2>
+                  <ul {{ style.list_wrap() }} >
+                  {% for assessment_id, assessment_data in digest['assessment_ready_for_review'].iteritems() %}
+                    <li {{ style.list_item() }} >
+                      Assessment:
+                      <a href="{{ assessment_data['url'] }}" {{ style.link_text() }} >
+                        {{ assessment_data['title'] }}</a>
+                    </li>
+                  {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {% if digest.get('assessment_verified') %}
+                  <h2 {{ style.sub_title() }} >Verified assessments</h2>
+                  <ul {{ style.list_wrap() }} >
+                  {% for assessment_id, assessment_data in digest['assessment_verified'].iteritems() %}
+                    <li {{ style.list_item() }} >
+                      Assessment:
+                      <a href="{{ assessment_data['url'] }}" {{ style.link_text() }} >
+                        {{ assessment_data['title'] }}</a>
                     </li>
                   {% endfor %}
                   </ul>
@@ -193,6 +244,19 @@ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
                   </ul>
                 {% endif %}
 
+                {% if digest.get('assessment_reopened') %}
+                  <h2 {{ style.sub_title() }} >Reopened assessments</h2>
+                  <ul {{ style.list_wrap() }} >
+                  {% for assessment_id, assessment_data in digest['assessment_reopened'].iteritems() %}
+                    <li {{ style.list_item() }} >
+                      Assessment:
+                      <a href="{{ assessment_data['url'] }}" {{ style.link_text() }} >
+                        {{ assessment_data['title'] }}</a>
+                    </li>
+                  {% endfor %}
+                  </ul>
+                {% endif %}
+
                 {% if digest.get('request_open') %}
                   <h2 {{ style.sub_title() }} >New Requests</h2>
                   <ul {{ style.list_wrap() }} >
@@ -200,10 +264,9 @@ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
                     <li {{ style.list_item() }} >
                       Request:
                       <a href="{{ request_data['url'] }}" {{ style.link_text() }} >
-                        {{ request_data['title'] }}
-                      </a>
-                      {% if request_data.get('fuzzy_start_date') %}
-                        starts {{ request_data['fuzzy_start_date'] }}.
+                        {{ request_data['title'] }}</a>
+                      {% if request_data.get('start_date_statement') %}
+                        {{ request_data['start_date_statement'] }}.
                       {% endif %}
                     </li>
                   {% endfor %}
@@ -239,7 +302,7 @@ Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
                 <p {{ style.text_paragraph() }} >
                   Thanks,<br>
-                  gGRC team
+                  GGRC team
                 </p>
               </td>
             </tr>

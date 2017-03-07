@@ -1,20 +1,22 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
 
-<li data-object-id="{{instance.id}}" data-object-type="{{instance.class.table_singular}}">
+<li
+  data-object-id="{{instance.id}}"
+  data-object-type="{{instance.class.table_singular}}"
+  class="clearfix">
   <span class="status-label status-"></span>
   <div class="w-status">
     {{{instance.description}}}
-    {{#prune_context}}
-    {{#child_options.0}}
-      <ul class="attachment-list" {{data 'options'}} {{ (el) -> el.cms_controllers_tree_view(el.data('options')).control("tree_view").display() }}>
-      </ul>
-    {{/child_options.0}}
-    {{/prune_context}}
 
+    <mapping-tree-view
+      parent-instance="instance"
+      mapping="instance.class.info_pane_options.attachments.mapping"
+      item-template="instance.class.info_pane_options.attachments.show_view"
+    />
     {{^if_equals parent_instance.status 'Verified'}}
     {{#with_mapping 'folders' instance}} {{! dummy to ensure the child content always updates}}
     {{#defer 'workflowFolder' instance.workflowFolder allow_fail=true}}
@@ -39,8 +41,13 @@
     {{/defer}}
     {{/with_mapping}}
     {{/if_equals}}
-    <span class="entry-author">Modified by {{#using person=instance.modified_by}}{{{render '/static/mustache/people/popover.mustache' person=person}}}{{/using}} on {{date instance.created_at}}</span>
+    <span class="entry-author">
+      Modified by
+      {{#using person=instance.modified_by}}{{>'/static/mustache/people/popover.mustache'}}{{/using}}
+      {{#if instance.created_at}}on {{date instance.created_at}}{{/if}}
+    </span>
   </div>
+
   <div class="entry-actions pull-right">
     <a class="dropdown-toggle" href="#" data-toggle="dropdown"><i class="fa fa-cog"></i></a>
     <ul class="dropdown-menu" aria-labelledby="drop1" role="menu">
@@ -54,15 +61,12 @@
       </li>
       <li>
         {{^if_equals parent_instance.status 'Verified'}}
-          {{#if mappings}}
-          {{#is_allowed_all 'delete' mappings}}
-            <a href="javascript://" data-toggle="unmap">
-              {{#result}}<span class="result" {{data 'result'}}></span>{{/result}}
+            {{#is_allowed 'delete' instance}}
+            <a data-toggle="modal-ajax-deleteform" data-object-plural="{{instance.class.table_plural}}" data-object-singular="CycleTaskEntry" data-modal-reset="reset" data-modal-class="modal" data-object-id="{{instance.id}}" href="javascript://">
               <i class="fa fa-trash"></i>
               Delete Comment
             </a>
           {{/is_allowed_all}}
-          {{/if}}
         {{/if_equals}}
       </li>
     </ul>

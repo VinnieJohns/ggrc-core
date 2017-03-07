@@ -1,6 +1,6 @@
 
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -27,10 +27,10 @@
    * @param {String} name - the name under which to register the component
    * @param {Object} config - the component configuration object as expected
    *   by the underlying can.Component.extend() method
-   *
+   * @param {Boolean} isLegacy - indicated if custom define plugin should be used
    * @return {Function} - the created component constructor
    */
-  function Components(name, config) {
+  function Components(name, config, isLegacy) {
     var constructor;
     var definitions;
 
@@ -42,13 +42,15 @@
       throw new Error('Component already exists: ' + name);
     }
 
-    if (config.scope && _.isObject(config.scope.define)) {
-      definitions = config.scope.define;
-      delete config.scope.define;
-    }
+    if (isLegacy) {
+      if (config.scope && _.isObject(config.scope.define)) {
+        definitions = config.scope.define;
+        delete config.scope.define;
+      }
 
-    if (definitions) {
-      config.init = Components._extendInit(config.init, definitions);
+      if (definitions) {
+        config.scope = Components._extendScope(config.scope, definitions);
+      }
     }
 
     constructor = can.Component.extend(config);
@@ -58,37 +60,39 @@
   }
 
   /**
-   * Wrap component init function
+   * Wrap component scope function
    *
-   * @param {Function} init - Component init function
+   * @param {Function} originalScope - Component original scope
    * @param {Object} definitions - Type definitions and their defaults
    *
-   * @return {Function} - Returns wrapped init function
+   * @return {Function} - Scope wrapped init function
    */
-  Components._extendInit = function (init, definitions) {
-    init = init || $.noop;
-
-    return function (element, options) {
-      var scope = this.scope;
+  Components._extendScope = function (originalScope, definitions) {
+    return function (scope, parentScope, element) {
       var val;
+      scope = scope || {};
+      parentScope = parentScope || {};
+      element = element instanceof jQuery ? element : $(element);
 
+      _.each(originalScope, function (obj, key) {
+        if (originalScope[key] === '@') {
+          scope[key] = element.attr(can.camelCaseToDashCase(key));
+        }
+      });
       _.each(definitions, function (obj, key) {
         var prefix = '';
-        if (!_.has(scope, key)) {
-          if (obj.type === 'function') {
-            prefix = 'can-';
-          }
-          val = element.getAttribute(prefix + can.camelCaseToDashCase(key));
-          val = Components._castValue(val, obj.type, options);
-          if (_.isUndefined(val) && _.has(obj, 'default')) {
-            val = obj.default;
-          }
-          scope[key] = val;
-          scope._data[key] = val;
+        if (obj.type === 'function') {
+          prefix = 'can-';
         }
-      }, this);
+        val = element.attr(prefix + can.camelCaseToDashCase(key));
+        val = Components._castValue(val, obj.type, parentScope);
+        if (_.isUndefined(val) && _.has(obj, 'default')) {
+          val = obj.default;
+        }
+        scope[key] = val;
+      });
 
-      return init.call(this, arguments);
+      return _.extend({}, originalScope, scope);
     };
   };
 
@@ -97,11 +101,11 @@
    *
    * @param {String} val - Value we get from element attribute
    * @param {String} type - Type for the value we need to get
-   * @param {object} options - init function options
+   * @param {object} parentScope - Parent scope
    *
    * @return {Any} - Returns casted types
    */
-  Components._castValue = function (val, type, options) {
+  Components._castValue = function (val, type, parentScope) {
     var types = {
       'boolean': function (bool) {
         if (_.isBoolean(bool)) {
@@ -128,23 +132,24 @@
         }
         return num;
       },
-      'function': function (fn, options) {
-        if (!fn || !options.scope.attr(fn)) {
+      'function': function (fn) {
+        if (!fn || !parentScope.attr(fn)) {
           return;
         }
-        return options.scope.attr(fn);
+        return parentScope.attr(fn);
       }
     };
     if (!types[type]) {
       console.warn('Cast value for `' + type + '` is not defined');
       return undefined;
     }
+
     if (val &&
         type !== 'function' &&
-        options.scope.attr(val)) {
-      val = options.scope.attr(val);
+        parentScope.attr(val)) {
+      val = parentScope.attr(val);
     }
-    return types[type](val, options);
+    return types[type](val);
   };
 
   // the internal storage of the registered components
@@ -188,5 +193,20 @@
     }
 
     return Components._registry[name];
+  };
+
+  /**
+   * Retrieve a Component's ViewModel from the registry.
+   * If no such Component is defined, an error is thrown.
+   * @param {String} name - the name of component to retrieve
+   * @return {can.Map|Error} - Component's View Model
+   */
+  Components.getViewModel = function (name) {
+    var viewModelConfig = Components.get(name).prototype.viewModel;
+    // if viewModelConfig is already a can.Map constructor no need to create a temporary class
+    if (can.isFunction(viewModelConfig)) {
+      return new viewModelConfig();
+    }
+    return new (can.Map.extend(viewModelConfig));
   };
 })(window.GGRC = window.GGRC || {}, can, _);

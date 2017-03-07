@@ -1,18 +1,20 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
 {{#instance}}
 <li>
-  <span class="person-label {{assignee_types assignee_type}}"></span>
   <div class="w-status">
     <span class="entry-author">
       {{#using person=modified_by}}
-        {{{render '/static/mustache/people/popover.mustache' person=person}}}
+        {{>'/static/mustache/people/popover.mustache'}}
       {{/using}}
-      added a response - {{date created_at}}
+      {{assignee_types assignee_type}} added a response - {{date created_at}}
     </span>
+    {{#instance.custom_attribute_revision}}
+        <h6 class="comment-list__ca-description">{{instance.custom_attribute_revision.custom_attribute.title}}: {{instance.custom_attribute_revision.custom_attribute_stored_value}}</h6>
+    {{/instance.custom_attribute_revision}}
     <div class="rtf-block">
       <inline-edit
         type="text"

@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """A module with configuration of the Reader role's permissions."""
@@ -11,12 +11,13 @@ from ggrc_basic_permissions.roles.Creator import owner_update
 
 scope = "System"
 description = """
-  This role grants a user basic, read-only, access permission to a gGRC
+  This role grants a user basic, read-only, access permission to a GGRC
   instance.
   """
 permissions = {
     "read": [
         "Audit",
+        "Snapshot",
         "Categorization",
         "Category",
         "ControlCategory",
@@ -64,7 +65,6 @@ permissions = {
         "ObjectOwner",
         "Person",
         "Program",
-        "Request",
         "Revision",
         "Role",
         "UserRole",
@@ -104,7 +104,7 @@ permissions = {
         {
             "type": "ObjectDocument",
             "terms": {
-                "property_name": "document,documentable",
+                "property_name": "documentable",
                 "action": "update",
             },
             "condition": "relationship",
@@ -140,7 +140,6 @@ permissions = {
         "Person",
         "Program",
         "Role",
-        "UserRole",
         "Context",
         "BackgroundTask",
     ],

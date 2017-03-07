@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -215,6 +215,10 @@ form.import {
 
 .new-relevant-block {
   padding: 30px;
+
+  relevant-filter {
+    max-width: 560px;
+  }
 }
 
 .new-relevant-block:nth-child(odd) {

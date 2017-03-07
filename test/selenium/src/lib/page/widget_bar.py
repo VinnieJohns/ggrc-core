@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Widget bar models.
@@ -156,7 +156,7 @@ class AdminDashboard(_WidgetBar):
   def select_events(self):
     """
     Returns:
-        lib.page.widget.admin_widget.People
+        lib.page.widget.admin_widget.Events
     """
     self.tab_events.click()
     return admin_widget.Events(self._driver)
@@ -188,10 +188,6 @@ class Audits(_ObjectWidgetBar):
 
 class Assessments(_ObjectWidgetBar):
   """A model representing widget bar of the Assessments object"""
-
-
-class Requests(_ObjectWidgetBar):
-  """A model representing widget bar of the requests object"""
 
 
 class Issues(_ObjectWidgetBar):

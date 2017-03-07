@@ -1,7 +1,7 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
-"""All gGRC model classes grouped together for convenience."""
+"""All GGRC model classes grouped together for convenience."""
 
 import sys
 
@@ -50,9 +50,9 @@ from ggrc.models.program import Program
 from ggrc.models.project import Project
 from ggrc.models.relationship import Relationship
 from ggrc.models.relationship import RelationshipAttr
-from ggrc.models.request import Request
 from ggrc.models.revision import Revision
 from ggrc.models.section import Section
+from ggrc.models.snapshot import Snapshot
 from ggrc.models.system import Process
 from ggrc.models.system import System
 from ggrc.models.system import SystemOrProcess
@@ -97,7 +97,6 @@ all_models = [
     Project,
     Relationship,
     RelationshipAttr,
-    Request,
     Section,
     Clause,
     SystemOrProcess,
@@ -109,7 +108,8 @@ all_models = [
     NotificationConfig,
     NotificationType,
     Notification,
-    Issue
+    Issue,
+    Snapshot,
 ]
 
 __all__ = [model.__name__ for model in all_models]
@@ -126,7 +126,7 @@ def register_model(model):
   """
   current_module = sys.modules[__name__]
   setattr(current_module, model.__name__, model)
-  model._inflector
+  inflector.register_inflections(model._inflector)
   all_models.append(model)
   __all__.append(model.__name__)
 

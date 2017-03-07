@@ -1,16 +1,18 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
-"""gGRC Collection REST services implementation. Common to all gGRC collection
+"""GGRC Collection REST services implementation. Common to all GGRC collection
 resources.
 """
 
 import datetime
 import hashlib
+import itertools
 import json
-import logging
 import time
+from logging import getLogger
+from collections import defaultdict
 from exceptions import TypeError
 from wsgiref.handlers import format_date_time
 from urllib import urlencode
@@ -18,15 +20,15 @@ from urllib import urlencode
 from blinker import Namespace
 from flask import url_for, request, current_app, g, has_request_context
 from flask.views import View
+from flask.ext.sqlalchemy import Pagination
+import sqlalchemy.orm.exc
 from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.expression import tuple_
-import sqlalchemy.orm.exc
 from werkzeug.exceptions import BadRequest, Forbidden
 
 import ggrc.builder.json
 import ggrc.models
-from flask.ext.sqlalchemy import Pagination
 from ggrc import db, utils
 from ggrc.utils import as_json, benchmark
 from ggrc.fulltext import get_indexer
@@ -37,9 +39,13 @@ from ggrc.models.event import Event
 from ggrc.models.revision import Revision
 from ggrc.models.exceptions import ValidationError, translate_message
 from ggrc.rbac import permissions, context_query_filter
-from .attribute_query import AttributeQueryBuilder
+from ggrc.services.attribute_query import AttributeQueryBuilder
 from ggrc.models.background_task import BackgroundTask, create_task
 from ggrc import settings
+
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 
 CACHE_EXPIRY_COLLECTION = 60
@@ -140,10 +146,6 @@ def set_ids_for_new_custom_attributes(parent_obj):
     attr = object_attrs[obj.type]
     setattr(obj, attr, parent_obj.id)
 
-    # Disable state updating so that a newly create object doesn't go straight
-    # from Draft to Modified.
-    if hasattr(obj, '_skip_os_state_update'):
-      obj.skip_os_state_update()
     db.session.add(obj)
   db.session.flush()
 
@@ -188,28 +190,28 @@ def update_memcache_before_commit(context, modified_objects, expiry_time):
 
   context.cache_manager = _get_cache_manager()
 
-  if len(modified_objects.new) > 0:
-    memcache_mark_for_deletion(context, modified_objects.new.items())
+  if modified_objects is not None:
+    if len(modified_objects.new) > 0:
+      memcache_mark_for_deletion(context, modified_objects.new.items())
 
-  if len(modified_objects.dirty) > 0:
-    memcache_mark_for_deletion(context, modified_objects.dirty.items())
+    if len(modified_objects.dirty) > 0:
+      memcache_mark_for_deletion(context, modified_objects.dirty.items())
 
-  if len(modified_objects.deleted) > 0:
-    memcache_mark_for_deletion(context, modified_objects.deleted.items())
+    if len(modified_objects.deleted) > 0:
+      memcache_mark_for_deletion(context, modified_objects.deleted.items())
 
   status_entries = {}
   for key in context.cache_manager.marked_for_delete:
     build_cache_status(status_entries, 'DeleteOp:' + key,
                        expiry_time, 'InProgress')
   if len(status_entries) > 0:
-    current_app.logger.info("CACHE: status entries: " + str(status_entries))
+    logger.info("CACHE: status entries: %s", status_entries)
     ret = context.cache_manager.bulk_add(status_entries, expiry_time)
     if ret is not None and len(ret) == 0:
       pass
     else:
-      current_app.logger.error(
-          'CACHE: Unable to add status for newly created entries ' +
-          str(ret))
+      logger.error('CACHE: Unable to add status for newly created entries %s',
+                   ret)
 
 
 def update_memcache_after_commit(context):
@@ -228,10 +230,17 @@ def update_memcache_after_commit(context):
     return
 
   if context.cache_manager is None:
-    current_app.logger.error("CACHE: Error in initiaizing cache manager")
+    logger.error("CACHE: Error in initiaizing cache manager")
     return
 
   cache_manager = context.cache_manager
+
+  related_objs = list()
+  for val in getattr(g, "referenced_objects", {}).itervalues():
+    obj_list = val.values()
+    if obj_list:
+      related_objs.append((obj_list[0], None))
+  memcache_mark_for_deletion(context, related_objs)
 
   # TODO(dan): check for duplicates in marked_for_delete
   if len(cache_manager.marked_for_delete) > 0:
@@ -240,7 +249,7 @@ def update_memcache_after_commit(context):
     # TODO(dan): handling failure including network errors,
     #            currently we log errors
     if delete_result is not True:
-      current_app.logger.error("CACHE: Failed to remove collection from cache")
+      logger.error("CACHE: Failed to remove collection from cache")
 
   status_entries = []
   for key in cache_manager.marked_for_delete:
@@ -250,8 +259,7 @@ def update_memcache_after_commit(context):
     # TODO(dan): handling failure including network errors,
     #            currently we log errors
     if delete_result is not True:
-      current_app.logger.error(
-          "CACHE: Failed to remove status entries from cache")
+      logger.error("CACHE: Failed to remove status entries from cache")
 
   clear_permission_cache()
   cache_manager.clear_cache()
@@ -289,7 +297,7 @@ def get_cache(create=False):
       cache = g.cache = Cache()
     return cache
   else:
-    logging.warning("No request context - no cache created")
+    logger.warning("No request context - no cache created")
     return None
 
 
@@ -303,6 +311,7 @@ def get_modified_objects(session):
 
 
 def update_index(session, cache):
+  """Update fulltext index records for cached objects."""
   if cache:
     indexer = get_indexer()
     for obj in cache.new:
@@ -314,22 +323,61 @@ def update_index(session, cache):
     session.commit()
 
 
-def log_event(session, obj=None, current_user_id=None, flush=True):
+def _revision_generator(user_id, action, objects):
+  for obj in objects:
+    yield Revision(obj, user_id, action, obj.log_json())
+
+
+def _get_log_revisions(current_user_id, obj=None, force_obj=False):
+  """Generate and return revisions for all cached objects."""
   revisions = []
+  cache = get_cache()
+  if not cache:
+    return revisions
+  all_edited_objects = itertools.chain(cache.new, cache.dirty, cache.deleted)
+  owner_modified_objects = [o.ownable for o in all_edited_objects
+                            if o.type == "ObjectOwner" and o.ownable]
+  revisions.extend(_revision_generator(
+      current_user_id, "created", cache.new
+  ))
+  revisions.extend(_revision_generator(
+      current_user_id, "modified", cache.dirty
+  ))
+  revisions.extend(_revision_generator(
+      current_user_id, "modified", owner_modified_objects
+  ))
+  if force_obj and obj is not None and obj not in cache.dirty:
+    # If the ``obj`` has been updated, but only its custom attributes have
+    # been changed, then this object will not be added into
+    # ``cache.dirty set``. So that its revision will not be created.
+    # The ``force_obj`` flag solves the issue, but in a bit dirty way.
+    revision = Revision(obj, current_user_id, 'modified', obj.log_json())
+    revisions.append(revision)
+  revisions.extend(_revision_generator(
+      current_user_id, "deleted", cache.deleted
+  ))
+  return revisions
+
+
+def log_event(session, obj=None, current_user_id=None, flush=True,
+              force_obj=False):
+  """Logs an event on object `obj`.
+
+  Args:
+    session: Current SQLAlchemy session (db.session)
+    obj: object on which some operation took place
+    current_user_id: ID of the user performing operation
+    flush: If set to true, flush the session at the start
+    force_obj: Used in case of custom attribute changes to force revision write
+  Returns:
+    Uncommitted models.Event instance
+  """
+  event = None
   if flush:
     session.flush()
   if current_user_id is None:
     current_user_id = get_current_user_id()
-  cache = get_cache()
-  for o in cache.dirty:
-    revision = Revision(o, current_user_id, 'modified', o.log_json())
-    revisions.append(revision)
-  for o in cache.deleted:
-    revision = Revision(o, current_user_id, 'deleted', o.log_json())
-    revisions.append(revision)
-  for o in cache.new:
-    revision = Revision(o, current_user_id, 'created', o.log_json())
-    revisions.append(revision)
+  revisions = _get_log_revisions(current_user_id, obj=obj, force_obj=force_obj)
   if obj is None:
     resource_id = 0
     resource_type = None
@@ -349,6 +397,7 @@ def log_event(session, obj=None, current_user_id=None, flush=True):
         context_id=context_id)
     event.revisions = revisions
     session.add(event)
+  return event
 
 
 def clear_permission_cache():
@@ -363,6 +412,9 @@ def clear_permission_cache():
 
 
 class ModelView(View):
+  """Basic view handler for all models"""
+  # pylint: disable=protected-access
+  # access to _sa_class_manager is needed for fetching the right mapper
   DEFAULT_PAGE_SIZE = 20
   MAX_PAGE_SIZE = 100
   pk = 'id'
@@ -475,6 +527,40 @@ class ModelView(View):
         for j in joinlist:
           query = query.join(j)
         query = query.filter(filter_)
+
+    if "__no_role" in request.args:
+      attr = getattr(self.model, "user_roles")
+      query = query.outerjoin(attr)
+      user_roles_module = attr.mapper.class_
+      superusers = getattr(settings, "BOOTSTRAP_ADMIN_USERS", [])
+      # Filter out:
+      # non superusers AND
+      #   (users without user_role OR
+      #    users with user_role BUT without global role:
+      #    Reader, Editor, Administrator)
+      subq = db.session.query(user_roles_module.person_id).filter(
+          or_(
+              # all users that have global user_role
+              user_roles_module.context_id.is_(None),
+              user_roles_module.context_id == 0
+          )
+      ).subquery()
+      filter_ = and_(
+          # user is not superuser
+          ~self.model.email.in_(superusers),
+          or_(
+              # user hasn't user_role in user_role table
+              user_roles_module.id.is_(None),
+              and_(
+                  # user has user_role in user_role table
+                  user_roles_module.id.isnot(None),
+                  # user hasn't global role
+                  ~user_roles_module.person_id.in_(subq)
+              )
+          )
+      )
+      query = query.filter(filter_)
+
     if filter_by_contexts:
       contexts = permissions.read_contexts_for(self.model.__name__)
       resources = permissions.read_resources_for(self.model.__name__)
@@ -498,7 +584,7 @@ class ModelView(View):
       types = self._get_matching_types(self.model)
       indexer = get_indexer()
       models = indexer._get_grouped_types(types)
-      search_query = indexer._get_type_query(models, 'read', None)
+      search_query = indexer.get_permissions_query(models, 'read', None)
       search_query = and_(search_query, indexer._get_filter_query(terms))
       search_query = db.session.query(indexer.record_type.key).filter(
           search_query)
@@ -656,12 +742,13 @@ class Resource(ModelView):
       """
       Indicates that a model object was received via POST and has been
       committed to the database. The sender in the signal will be the model
-      aclass of the POSTed resource. The following arguments will be sent along
+      class of the POSTed resource. The following arguments will be sent along
       with the signal:
 
         :obj: The model instance created from the POSTed JSON.
         :src: The original POSTed JSON dictionary.
         :service: The instance of Resource handling the POST request.
+        :event: Instance of an Event (if change took place) or None otherwise
       """,)
   model_put = signals.signal(
       "Model PUT",
@@ -686,6 +773,7 @@ class Resource(ModelView):
         :obj: The model instance updated from the PUT JSON.
         :src: The original PUT JSON dictionary.
         :service: The instance of Resource handling the PUT request.
+        :event: Instance of an Event (if change took place) or None otherwise
       """,)
   model_deleted = signals.signal(
       "Model DELETEd",
@@ -706,6 +794,7 @@ class Resource(ModelView):
 
         :obj: The model instance removed.
         :service: The instance of Resource handling the DELETE request.
+        :event: Instance of an Event (if change took place) or None otherwise
       """,)
 
   def dispatch_request(self, *args, **kwargs):  # noqa
@@ -734,12 +823,12 @@ class Resource(ModelView):
             return self.delete(*args, **kwargs)
           else:
             raise NotImplementedError()
-        except (IntegrityError, ValidationError) as err:
+        except (IntegrityError, ValidationError, ValueError) as err:
           message = translate_message(err)
-          current_app.logger.warn(message)
-          return (message, 403, [])
+          logger.warning(message)
+          raise BadRequest(message)
         except Exception as err:
-          current_app.logger.exception(err)
+          logger.exception(err)
           raise
         finally:
           # When running integration tests, cache sometimes does not clear
@@ -758,10 +847,16 @@ class Resource(ModelView):
       obj = self.get_object(id)
     if obj is None:
       return self.not_found_response()
-    if 'Accept' in self.request.headers and \
-       'application/json' not in self.request.headers['Accept']:
+
+    accept_header = self.request.headers.get('Accept', '').strip()
+    if (
+        accept_header and
+        accept_header != '*/*' and
+        'application/json' not in accept_header
+    ):
       return current_app.make_response((
           'application/json', 406, [('Content-Type', 'text/plain')]))
+
     with benchmark("Query read permissions"):
       if not permissions.is_allowed_read(
           self.model.__name__, obj.id, obj.context_id)\
@@ -783,28 +878,49 @@ class Resource(ModelView):
 
   def validate_headers_for_put_or_delete(self, obj):
     """rfc 6585 defines a new status code for missing required headers"""
-    required_headers = set(['If-Match', 'If-Unmodified-Since'])
+    required_headers = set(["If-Match", "If-Unmodified-Since"])
     missing_headers = required_headers.difference(
         set(self.request.headers.keys()))
     if missing_headers:
-      return current_app.make_response(
-          ('required headers: ' + ', '.join(missing_headers),
-           428, [('Content-Type', 'text/plain')]))
-
-    if request.headers['If-Match'] != etag(self.object_for_json(obj)) or \
-        request.headers['If-Unmodified-Since'] != \
-            self.http_timestamp(self.modified_at(obj)):
       return current_app.make_response((
-          'The resource could not be updated due to a conflict with the '
-          'current state on the server. Please resolve the conflict by '
-          'refreshing the resource.',
+          json.dumps({
+              "message": "Missing headers: " + ", ".join(missing_headers),
+          }),
+          428,
+          [("Content-Type", "application/json")],
+      ))
+
+    object_etag = etag(self.object_for_json(obj))
+    object_timestamp = self.http_timestamp(self.modified_at(obj))
+    if (request.headers["If-Match"] != object_etag or
+            request.headers["If-Unmodified-Since"] != object_timestamp):
+      return current_app.make_response((
+          json.dumps({
+              "message": "The resource could not be updated due to a conflict "
+                         "with the current state on the server. Please "
+                         "resolve the conflict by refreshing the resource.",
+          }),
           409,
-          [('Content-Type', 'text/plain')]
+          [("Content-Type", "application/json")]
       ))
     return None
 
   def json_update(self, obj, src):
     ggrc.builder.json.update(obj, src)
+
+  def _check_put_permissions(self, obj, new_context):
+    """Check context and resource permissions for PUT."""
+    if not permissions.is_allowed_update(
+        self.model.__name__, obj.id, obj.context_id)\
+       and not permissions.has_conditions('update', self.model.__name__):
+      raise Forbidden()
+    if not permissions.is_allowed_update_for(obj):
+      raise Forbidden()
+    if new_context != obj.context_id \
+       and not permissions.is_allowed_update(
+            self.model.__name__, obj.id, new_context)\
+       and not permissions.has_conditions('update', self.model.__name__):
+      raise Forbidden()
 
   def put(self, id):
     with benchmark("Query for object"):
@@ -813,18 +929,8 @@ class Resource(ModelView):
       return self.not_found_response()
     src = self.request.json
     with benchmark("Query update permissions"):
-      if not permissions.is_allowed_update(
-          self.model.__name__, obj.id, obj.context_id)\
-         and not permissions.has_conditions('update', self.model.__name__):
-        raise Forbidden()
-      if not permissions.is_allowed_update_for(obj):
-        raise Forbidden()
       new_context = self.get_context_id_from_json(src)
-      if new_context != obj.context_id \
-         and not permissions.is_allowed_update(
-              self.model.__name__, obj.id, new_context)\
-         and not permissions.has_conditions('update', self.model.__name__):
-        raise Forbidden()
+      self._check_put_permissions(obj, new_context)
     if self.request.mimetype != 'application/json':
       return current_app.make_response(
           ('Content-Type must be application/json', 415, []))
@@ -835,21 +941,23 @@ class Resource(ModelView):
     try:
       src = src[root_attribute]
     except KeyError:
-      return current_app.make_response((
-          'Required attribute "{0}" not found'.format(
-              root_attribute), 400, []))
+      raise BadRequest('Required attribute "{0}" not found'.format(
+          root_attribute))
     with benchmark("Deserialize object"):
       self.json_update(obj, src)
     obj.modified_by_id = get_current_user_id()
     db.session.add(obj)
-    with benchmark("Send PUTed event"):
+    with benchmark("Validate custom attributes"):
+      if hasattr(obj, "validate_custom_attributes"):
+        obj.validate_custom_attributes()
+    with benchmark("Send PUT event"):
       self.model_put.send(obj.__class__, obj=obj, src=src, service=self)
     with benchmark("Get modified objects"):
       modified_objects = get_modified_objects(db.session)
     with benchmark("Update custom attribute values"):
       set_ids_for_new_custom_attributes(obj)
     with benchmark("Log event"):
-      log_event(db.session, obj)
+      event = log_event(db.session, obj, force_obj=True)
     with benchmark("Update memcache before commit for collection PUT"):
       update_memcache_before_commit(
           self.request, modified_objects, CACHE_EXPIRY_COLLECTION)
@@ -863,7 +971,10 @@ class Resource(ModelView):
       update_memcache_after_commit(self.request)
     with benchmark("Send PUT - after commit event"):
       self.model_put_after_commit.send(obj.__class__, obj=obj,
-                                       src=src, service=self)
+                                       src=src, service=self, event=event)
+      # Note: Some data is created in listeners for model_put_after_commit
+      # (like updates to snapshots), so we need to commit the changes
+      db.session.commit()
     with benchmark("Serialize collection"):
       object_for_json = self.object_for_json(obj)
     with benchmark("Make response"):
@@ -902,7 +1013,7 @@ class Resource(ModelView):
       with benchmark("Get modified objects"):
         modified_objects = get_modified_objects(db.session)
       with benchmark("Log event"):
-        log_event(db.session, obj)
+        event = log_event(db.session, obj)
       with benchmark("Update memcache before commit for collection DELETE"):
         update_memcache_before_commit(
             self.request, modified_objects, CACHE_EXPIRY_COLLECTION)
@@ -914,7 +1025,7 @@ class Resource(ModelView):
         update_memcache_after_commit(self.request)
       with benchmark("Send DELETEd - after commit event"):
         self.model_deleted_after_commit.send(obj.__class__, obj=obj,
-                                             service=self)
+                                             service=self, event=event)
       with benchmark("Query for object"):
         object_for_json = self.object_for_json(obj)
       with benchmark("Make response"):
@@ -975,10 +1086,15 @@ class Resource(ModelView):
 
   def collection_get(self):
     with benchmark("dispatch_request > collection_get > Check headers"):
-      if 'Accept' in self.request.headers and \
-         'application/json' not in self.request.headers['Accept']:
+      accept_header = self.request.headers.get('Accept', '').strip()
+      if (
+          accept_header and
+          accept_header != '*/*' and
+          'application/json' not in accept_header
+      ):
         return current_app.make_response((
             'application/json', 406, [('Content-Type', 'text/plain')]))
+
     with benchmark("dispatch_request > collection_get > Collection matches"):
       # We skip querying by contexts for Creator role and relationship objects,
       # because it will filter out objects that the Creator can access.
@@ -1207,6 +1323,29 @@ class Resource(ModelView):
         db.session.expunge_all()
         raise Forbidden()
 
+  def _gather_referenced_objects(self, data, accomulator=None):
+    if accomulator is None:
+      accomulator = defaultdict(set)
+    if isinstance(data, list):
+      for value in data:
+        self._gather_referenced_objects(value, accomulator)
+    elif isinstance(data, dict):
+      if "type" in data and data.get("id"):
+        accomulator[data["type"]].add(data["id"])
+      for value in data.values():
+        self._gather_referenced_objects(value, accomulator)
+    return accomulator
+
+  def _build_request_stub_cache(self, data):
+    objects = self._gather_referenced_objects(data)
+    g.referenced_objects = {}
+    for class_name, ids in objects.items():
+      class_ = getattr(ggrc.models, class_name, None)
+      if hasattr(class_, "query"):
+        g.referenced_objects[class_] = {
+            obj.id: obj for obj in class_.query.filter(class_.id.in_(ids))
+        }
+
   def collection_post_loop(self, body, res, no_result, running_async):
     """Handle all posted objects.
 
@@ -1219,6 +1358,7 @@ class Resource(ModelView):
 
     with benchmark("Generate objects"):
       objects = []
+      sources = []
       for wrapped_src in body:
         src = self._unwrap_collection_post_src(wrapped_src)
         obj = self._get_model_instance(src, body)
@@ -1231,18 +1371,30 @@ class Resource(ModelView):
 
         obj.modified_by = get_current_user()
         objects.append(obj)
+        sources.append(src)
 
-    with benchmark("Send collection POSTed event"):
-      self.collection_posted.send(obj.__class__, objects=objects)
     with benchmark("Check create permissions"):
       self._check_post_permissions(objects)
+    with benchmark("Send collection POSTed event"):
+      self.collection_posted.send(obj.__class__,
+                                  objects=objects, sources=sources)
+    with benchmark("Flush posted objects"):
+      db.session.flush()
+    with benchmark("Validate custom attributes"):
+      for obj in objects:
+        if hasattr(obj, "validate_custom_attributes"):
+          obj.validate_custom_attributes()
     with benchmark("Get modified objects"):
       modified_objects = get_modified_objects(db.session)
     with benchmark("Log event for all objects"):
-      log_event(db.session, obj, flush=False)
+      event = log_event(db.session, obj, flush=False)
     with benchmark("Update memcache before commit for collection POST"):
       update_memcache_before_commit(
           self.request, modified_objects, CACHE_EXPIRY_COLLECTION)
+    with benchmark("Serialize objects"):
+      for obj in objects:
+        object_for_json = {} if no_result else self.object_for_json(obj)
+        res.append((201, object_for_json))
     with benchmark("Commit collection"):
       db.session.commit()
     with benchmark("Update index"):
@@ -1251,24 +1403,19 @@ class Resource(ModelView):
       update_memcache_after_commit(self.request)
 
     with benchmark("Send model POSTed - after commit event"):
-      for obj in objects:
+      for obj, src in itertools.izip(objects, sources):
         self.model_posted_after_commit.send(obj.__class__, obj=obj,
-                                            src=src, service=self)
+                                            src=src, service=self, event=event)
         # Note: In model_posted_after_commit necessary mapping and
         # relationships are set, so need to commit the changes
       db.session.commit()
 
-    with benchmark("Serialize objects"):
-      for obj in objects:
-        object_for_json = {} if no_result else self.object_for_json(obj)
-        res.append((201, object_for_json))
-
   @staticmethod
   def _make_error_from_exception(exc):
-    """Return a 403-code with the exception message."""
+    """Return a 400-code with the exception message."""
     message = translate_message(exc)
-    current_app.logger.warn(message)
-    return (403, message)
+    logger.warning(message)
+    return (400, message)
 
   def collection_post(self):  # noqa
     with benchmark("collection post"):
@@ -1301,16 +1448,19 @@ class Resource(ModelView):
         body = [body]
       res = []
       with benchmark("collection post > body loop: {}".format(len(body))):
+        with benchmark("Build stub query cache"):
+          self._build_request_stub_cache(body)
         try:
           self.collection_post_loop(body, res, no_result, running_async)
-        except (IntegrityError, ValidationError) as e:
-          res.append(self._make_error_from_exception(e))
+        except (IntegrityError, ValidationError, ValueError) as error:
+          res.append(self._make_error_from_exception(error))
           db.session.rollback()
-        except Exception as e:
-          res.append((getattr(e, "code", 500), e.message))
-          current_app.logger.warn("Collection POST commit failed:")
-          current_app.logger.exception(e)
+        except Exception as error:
+          res.append((getattr(error, "code", 500), error.message))
+          logger.warning("Collection POST commit failed", exc_info=True)
           db.session.rollback()
+        if hasattr(g, "referenced_objects"):
+          delattr(g, "referenced_objects")
       with benchmark("collection post > calculate response statuses"):
         headers = {"Content-Type": "application/json"}
         errors = []

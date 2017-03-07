@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -710,7 +710,7 @@ describe('GGRC.Components.objectHistory', function () {
       function () {
         var revision = {
           modified_by: 'User 17',
-          updated_at: new Date('2015-05-17 17:24:01'),
+          updated_at: new Date('2015-05-17T17:24:01'),
           action: 'created',
           destination: {
             display_type: function () {
@@ -729,7 +729,7 @@ describe('GGRC.Components.objectHistory', function () {
         expect(result).toEqual({
           madeBy: 'User 17',
           role: 'none',
-          updatedAt: new Date('2015-05-17 17:24:01'),
+          updatedAt: new Date('2015-05-17T17:24:01'),
           changes: {
             origVal: '—',
             newVal: 'Created',
@@ -744,7 +744,7 @@ describe('GGRC.Components.objectHistory', function () {
       function () {
         var revision = {
           modified_by: 'User 17',
-          updated_at: new Date('2015-05-17 17:24:01'),
+          updated_at: new Date('2015-05-17T17:24:01'),
           action: 'deleted',
           source: {
             display_type: function () {
@@ -763,7 +763,7 @@ describe('GGRC.Components.objectHistory', function () {
         expect(result).toEqual({
           madeBy: 'User 17',
           role: 'none',
-          updatedAt: new Date('2015-05-17 17:24:01'),
+          updatedAt: new Date('2015-05-17T17:24:01'),
           changes: {
             origVal: 'Created',
             newVal: 'Deleted',
@@ -777,6 +777,34 @@ describe('GGRC.Components.objectHistory', function () {
   describe('_computeRoleChanges method', function () {
     var componentInst;  // fake component instance
     var method;  // the method under test
+    var corruptedRevision = new can.Map({
+      object: new can.List([
+        {
+          id: 10,
+          modified_by: {
+            id: 166
+          }
+        }
+      ]),
+      mappings: new can.List([
+        {
+          id: 1,
+          modified_by: {
+            id: 166
+          },
+          action: 'created',
+          source_type: 'Person',
+          source_id: 166,
+          destination_type: 'ObjectFoo',
+          destination_id: 123,
+          updated_at: new Date(2016, 0, 1),
+          type: 'Revision',
+          content: {
+            attrs: {}
+          }
+        }
+      ])
+    });
     var revisions = new can.Map({
       object: new can.List([
         {
@@ -968,6 +996,20 @@ describe('GGRC.Components.objectHistory', function () {
           },
           {
             updated_at: new Date(2016, 0, 5),
+            role: 'none'
+          }
+        ]
+      });
+    });
+
+    it('builds correct history when data is corrupted', function () {
+      var roleHistory;
+
+      roleHistory = method(corruptedRevision);
+      expect(roleHistory).toEqual({
+        '166': [
+          {
+            updated_at: new Date(2016, 0, 1),
             role: 'none'
           }
         ]

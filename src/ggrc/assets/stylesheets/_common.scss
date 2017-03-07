@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -96,15 +96,36 @@ select {
 
 // buttons
 .btn-info-pin-header {
+
   margin-right: 10px;
   &.undo {
     margin-right: 10px;
     margin-top: 6px;
+    &.btn-link {
+        margin:0 ;
+        background: transparent;
+        box-shadow: none;
+        color: $link;
+
+        &:hover {
+          color: $darkBlue;
+        }
+      }
   }
   .sticky-info-panel & {
-    margin-top: 18px;
+    margin-top: 30px;
     &.undo {
       margin-top: 22px;
+      &.btn-link {
+        margin-top: 30px;
+        background: transparent;
+        box-shadow: none;
+        color: $link;
+
+        &:hover {
+          color: $darkBlue;
+        }
+      }
     }
   }
 }
@@ -118,10 +139,10 @@ select {
     @include btn-size(12px, 18px, 4px 14px);
   }
   &.btn-mini {
-    @include btn-size(11px, 16px, 2px 12px);
+    @include btn-size(11px, 16px, 2px 10px);
   }
   [class*="fa-"] {
-    @include opacity(0.7);
+    opacity: 0.7;
   }
   &.btn-full {
     text-align: center;
@@ -444,14 +465,12 @@ select.multiple-selector {
 // Sticky headers
 .sticky-header {
   @extend %sticky;
-  z-index: zIndex(sticky);
   border-top: none !important;
 }
 
 .sticky-footer {
   @extend %sticky;
   @include box-shadow(inset 0 0 3px 0 #bbb);
-  z-index: zIndex(sticky);
   border-bottom: none !important;
 }
 

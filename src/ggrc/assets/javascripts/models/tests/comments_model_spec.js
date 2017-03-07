@@ -1,5 +1,5 @@
 /*!
-  Copyright (C) 2016 Google Inc.
+  Copyright (C) 2017 Google Inc.
   Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -69,6 +69,32 @@ describe('CMS.Models.Comment', function () {
       expect($fakeBody.trigger).toHaveBeenCalledWith(
         'ajax:flash', {error: 'There was a problem with saving.'}
       );
+    });
+  });
+
+  describe('display_name() method', function () {
+    var fakeComment;
+    var method;
+
+    beforeEach(function () {
+      fakeComment = new can.Map({});
+      method = CMS.Models.Comment.prototype.display_name.bind(fakeComment);
+    });
+
+    it('returns an empty string if comment does not have a description set',
+      function () {
+        var result;
+        fakeComment.attr('description', undefined);
+        result = method();
+        expect(result).toEqual('');
+      }
+    );
+
+    it('returns comment\'s description if the latter exists', function () {
+      var result;
+      fakeComment.attr('description', 'The comment content.');
+      result = method();
+      expect(result).toEqual('The comment content.');
     });
   });
 });

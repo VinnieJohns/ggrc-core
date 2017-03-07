@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Handlers for default people fields in assessment templates.
@@ -6,9 +6,7 @@
 These should be used on default verifiers and default assessors.
 """
 
-from flask import json
-
-from ggrc.models import AssessmentTemplate
+from ggrc.models import AssessmentTemplate, Person
 from ggrc.converters import errors
 from ggrc.converters.handlers import handlers
 
@@ -32,9 +30,39 @@ class DefaultPersonColumnHandler(handlers.ColumnHandler):
 
     This is the "other" option in the default assessor dropdown menu.
     """
-    self.add_error(errors.UNSUPPORTED_LIST_ERROR,
-                   column_name=self.display_name,
-                   value_type="email lists")
+    # This is not good and fast, because it executes query for each
+    # field from each row that contains people list.
+    # If the feature is used actively, it should be refactored
+    # and optimized.
+    new_objects = self.row_converter.block_converter.converter.new_objects
+    new_people = new_objects[Person]
+
+    people = []
+    emails = []
+
+    for email in self.raw_value.splitlines():
+      email = email.strip()
+      if not email:
+        continue
+      if email in new_people:
+        # In "dry run" mode person.id is None, so it is replaced by int value
+        # to pass validation.
+        people.append(new_people[email].id or 0)
+      else:
+        emails.append(email)
+
+    if emails:
+      for person in Person.query.filter(Person.email.in_(emails)).all():
+        people.append(person.id)
+        emails.remove(person.email)
+      if emails:
+        for email in emails:
+          self.add_warning(errors.UNKNOWN_USER_WARNING,
+                           column_name=self.display_name,
+                           email=email)
+    if not people:
+      self.add_error(errors.MISSING_VALUE_ERROR, column_name=self.display_name)
+    return people
 
   def _parse_label_values(self):
     """Parse predefined default assessors.
@@ -77,7 +105,21 @@ class DefaultPersonColumnHandler(handlers.ColumnHandler):
 
     if _default_people:
       default_people.update(_default_people)
-      setattr(self.row_converter.obj, "default_people",
-              json.dumps(default_people))
+      setattr(self.row_converter.obj, "default_people", default_people)
     else:
       setattr(self.row_converter.obj, "_default_people", default_people)
+
+  def get_value(self):
+    """Get value from default_people attribute."""
+    value = self.row_converter.obj.default_people.get(
+        self.KEY_MAP[self.key],
+        "ERROR",
+    )
+    if isinstance(value, list):
+      # This is not good and fast, because it executes query for each
+      # field from each row that contains people list.
+      # If the feature is used actively, it should be refactored
+      # and optimized.
+      people = Person.query.filter(Person.id.in_(value)).all()
+      value = "\n".join(p.email for p in people)
+    return value

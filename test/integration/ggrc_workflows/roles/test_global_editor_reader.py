@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """
 Test if global editor and global reader role has the permission to access
@@ -24,8 +24,7 @@ class GlobalEditorReaderGetTest(WorkflowRolesTestCase):
   """
 
   def setUp(self):
-    # old-style class
-    WorkflowRolesTestCase.setUp(self)
+    super(GlobalEditorReaderGetTest, self).setUp()
 
   def assert200_helper(self, response, message=None):
     """Helper that adds the info of the current user to the message.

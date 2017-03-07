@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -13,7 +13,6 @@
     ),
     scope: {
       instance: null,
-      type: '@',
       caId: null,
       property: '@',
       value: null,
@@ -26,32 +25,50 @@
         value: null,
         values: null
       },
-
       emptyText: '@',
-
       $rootEl: null,
+      type: '@',
 
-      _EV_INSTANCE_SAVE: 'on-save',
+      // event names definitions
+      _EV_INSTANCE_SAVE: 'on-save',  // "save" button is clicked
+      _EV_BEFORE_EDIT: 'before-edit',  // before entering the edit mode
 
       /**
        * Enter the edit mode if editing is allowed (i.e. the readonly option is
-       * not set). If the readonly option is enabled, do not do anything.
+       * not set).
+       *
+       * If the readonly option is enabled, do not do anything. The same if the
+       * beforeEdit handler is not defined, or if the promise it returns is not
+       * resolved.
        *
        * @param {can.Map} scope - the scope object itself (this)
        * @param {jQuery.Element} $el - the DOM element that triggered the event
        * @param {jQuery.Event} ev - the event object
        */
       enableEdit: function (scope, $el, ev) {
+        var confirmation;
+        var onBeforeEdit = this.$rootEl.attr('can-' + scope._EV_BEFORE_EDIT);
+
         ev.preventDefault();
-        if (!this.attr('readonly') && scope.needConfirm) {
-          scope.needConfirm.confirm(scope.instance, scope.needConfirm)
-            .done(function () {
-              this.attr('context.isEdit', true);
-            }.bind(this));
-        } else if (!this.attr('readonly')) {
-          this.attr('context.isEdit', true);
+
+        if (this.attr('readonly')) {
+          return;
         }
+
+        if (!onBeforeEdit) {
+          this.attr('context.isEdit', true);
+          return;
+        }
+
+        confirmation = this.$rootEl.triggerHandler({
+          type: this._EV_BEFORE_EDIT
+        });
+
+        confirmation.done(function () {
+          this.attr('context.isEdit', true);
+        }.bind(this));   // and do nothing if no confirmation by the user
       },
+
       onCancel: function (ctx, el, ev) {
         ev.preventDefault();
         this.attr('context.isEdit', false);
@@ -87,44 +104,55 @@
         this.attr('context.isEdit', false);
         if (oldValue === value) {
           return;
+        } else if (type === 'checkbox' && Number(oldValue) === Number(value)) {
+          // cast to Number and compare. return if equal.
+          return;
+        } else if (type === 'person') {
+          if (value && oldValue && oldValue.id === value.id) {
+            // check instances of value and oldValue.
+            // return if instances are exist and ids are equal.
+            return;
+          } else if (!value && !oldValue) {
+            // return if instances are not exist.
+            return;
+          }
         }
 
         this.attr('_value', value);
         this.attr('isSaving', true);
-        instance.refresh().then(function () {
-          if (this.attr('caId')) {
-            if (type === 'checkbox') {
-              value = value ? 1 : 0;
-            }
-            if (type === 'person') {
-              value = value ? ('Person:' + value.id) : value;
-            }
-            if (type === 'dropdown') {
-              if (value && value === '') {
-                value = undefined;
-              }
-            }
-            instance.attr('custom_attributes.' + caid, value);
-          } else {
-            instance.attr(property, value);
-          }
 
-          instance.save()
-            .done(function () {
-              $(document.body).trigger('ajax:flash', {
-                success: 'Saved'
-              });
-            })
-            .fail(function () {
-              this.attr('context.value', this.attr('_value'));
-              $(document.body).trigger('ajax:flash', {
-                error: 'There was a problem saving'
-              });
-            }.bind(this))
-            .always(function () {
-              this.attr('isSaving', false);
-            }.bind(this));
-        }.bind(this));
+        if (this.attr('caId')) {
+          if (type === 'checkbox') {
+            value = value ? 1 : 0;
+          }
+          if (type === 'person') {
+            value = value ? ('Person:' + value.id) : 'Person:None';
+          }
+          if (type === 'dropdown') {
+            if (value && value === '') {
+              value = undefined;
+            }
+          }
+          instance.attr('custom_attributes.' + caid, value);
+        } else {
+          instance.attr(property, value);
+        }
+        instance.attr('isReadyForRender', false);
+        instance.save()
+          .done(function () {
+            $(document.body).trigger('ajax:flash', {
+              success: 'Saved'
+            });
+          })
+          .fail(function () {
+            this.attr('context.value', this.attr('_value'));
+            $(document.body).trigger('ajax:flash', {
+              error: 'There was a problem saving'
+            });
+          }.bind(this))
+          .always(function () {
+            this.attr('isSaving', false);
+          }.bind(this));
       }
     },
     init: function (element, options) {
@@ -177,7 +205,7 @@
         if (!isInside &&
             this.scope.attr('context.isEdit')) {
           _.defer(function () {
-            this.scope.onSave(this.scope, this.element, ev);
+            this.scope.onCancel(this.scope, this.element, ev);
           }.bind(this));
         }
       }

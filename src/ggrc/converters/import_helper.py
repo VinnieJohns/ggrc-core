@@ -1,13 +1,12 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 import csv
 import chardet
 from StringIO import StringIO
 from ggrc.models.reflection import AttributeInfo
-from ggrc.converters.column_handlers import COLUMN_HANDLERS
+from ggrc.converters.column_handlers import model_column_handlers
 from ggrc.converters.handlers import handlers
-from ggrc.converters.handlers import custom_attribute
 
 
 def get_object_column_definitions(object_class):
@@ -24,23 +23,25 @@ def get_object_column_definitions(object_class):
   Returns:
     dict: Updated attribute definitions dict with additional data.
   """
-  attributes = AttributeInfo.get_object_attr_definitions(object_class)
+  attributes = AttributeInfo.get_object_attr_definitions(object_class,
+                                                         include_oca=True)
+  column_handlers = model_column_handlers(object_class)
   for key, attr in attributes.iteritems():
     handler_key = attr.get("handler_key", key)
-    handler = COLUMN_HANDLERS.get(handler_key, handlers.ColumnHandler)
+    # check full handler keys
+    handler = column_handlers.get(handler_key)
+    if not handler:
+      # check handler key prefixes
+      handler = column_handlers.get(handler_key.split(":")[0])
+    if not handler:
+      # use default handler
+      handler = handlers.ColumnHandler
     validator = None
     default = None
     if attr["type"] == AttributeInfo.Type.PROPERTY:
       validator = getattr(object_class, "validate_{}".format(key), None)
       default = getattr(object_class, "default_{}".format(key), None)
-    elif attr["type"] == AttributeInfo.Type.MAPPING:
-      handler = COLUMN_HANDLERS.get(key, handlers.MappingColumnHandler)
-    elif attr["type"] == AttributeInfo.Type.CUSTOM:
-      handler = COLUMN_HANDLERS.get(
-          key, custom_attribute.CustomAttributeColumHandler)
-    elif attr["type"] == AttributeInfo.Type.OBJECT_CUSTOM:
-      handler = COLUMN_HANDLERS.get(
-          key, custom_attribute.ObjectCaColumnHandler)
+
     attr["handler"] = attr.get("handler", handler)
     attr["validator"] = attr.get("validator", validator)
     attr["default"] = attr.get("default", default)
@@ -69,12 +70,13 @@ def generate_csv_string(csv_data):
 
 def extract_relevant_data(csv_data):
   """ Split csv data into data and metadata """
-  striped_data = [map(unicode.strip, line) for line in csv_data]  # noqa
+  striped_data = [[unicode.strip(c) for c in line]
+                  for line in csv_data]  # noqa
   transpose_data = zip(*striped_data[1:])
-  non_empty = filter(any, transpose_data)
+  non_empty = [d for d in transpose_data if any(d)]
   data = zip(*non_empty[1:])
   column_definitions = list(data.pop(0))
-  data = map(list, data)
+  data = [list(d) for d in data]
   return column_definitions, data
 
 
@@ -82,7 +84,7 @@ def equalize_array(array):
   """ Expand all rows of 2D array to the same length """
   if len(array) == 0:
     return array
-  max_length = max(map(len, array))
+  max_length = max([len(i) for i in array])
   for row in array:
     diff = max_length - len(row)
     row.extend([""] * diff)
@@ -94,10 +96,10 @@ def split_array(csv_data):
   data_blocks = []
   offsets = []
   current_block = None
-  for ofset, line in enumerate(csv_data):
-    if sum(map(len, line)) > 0:
+  for offset, line in enumerate(csv_data):
+    if sum([len(l) for l in line]) > 0:
       if current_block is None:
-        offsets.append(ofset)
+        offsets.append(offset)
         data_blocks.append([])
         current_block = len(data_blocks) - 1
       data_blocks[current_block].append(line)

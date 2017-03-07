@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -13,17 +13,20 @@ can.Model.Cacheable("CMS.Models.Directive", {
   , root_model : "Directive"
   , findAll : "/api/directives"
   , findOne : "/api/directives/{id}"
-  , mixins : ["ownable", "contactable", "unique_title"]
+  , mixins : [
+    'ownable', 'contactable', 'unique_title', 'timeboxed', 'ca_update'
+  ]
   , tree_view_options : {
-      list_view : GGRC.mustache_path + "/directives/tree.mustache"
-    , footer_view : GGRC.mustache_path + "/directives/tree_footer.mustache"
+      list_view : GGRC.mustache_path + "/directives/tree.mustache",
+    attr_view: GGRC.mustache_path + '/directives/tree-item-attr.mustache'
+    , footer_view : GGRC.mustache_path + "/base_objects/tree_footer.mustache"
     , attr_list : can.Model.Cacheable.attr_list.concat([
       {attr_title: 'URL', attr_name: 'url'},
       {attr_title: 'Reference URL', attr_name: 'reference_url'},
       {attr_title: 'Effective Date', attr_name: 'start_date'},
       {attr_title: 'Stop Date', attr_name: 'end_date'}
     ])
-    , add_item_view : GGRC.mustache_path + "/directives/tree_add_item.mustache"
+    , add_item_view : GGRC.mustache_path + "/snapshots/tree_add_item.mustache"
     }
 
   , model : function(params) {
@@ -52,17 +55,13 @@ can.Model.Cacheable("CMS.Models.Directive", {
       modified_by: 'CMS.Models.Person.stub',
       object_people: 'CMS.Models.ObjectPerson.stubs',
       people: 'CMS.Models.Person.stubs',
-      object_documents: 'CMS.Models.ObjectDocument.stubs',
-      documents: 'CMS.Models.Document.stubs',
       related_sources: 'CMS.Models.Relationship.stubs',
       related_destinations: 'CMS.Models.Relationship.stubs',
       objectives: 'CMS.Models.Objective.stubs',
       programs: 'CMS.Models.Program.stubs',
       sections: 'CMS.Models.get_stubs',
       controls: 'CMS.Models.Control.stubs',
-      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs',
-      start_date: 'date',
-      end_date: 'date'
+      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs'
     }
   , defaults : {
   }
@@ -94,15 +93,15 @@ CMS.Models.Directive("CMS.Models.Standard", {
   , create : "POST /api/standards"
   , update : "PUT /api/standards/{id}"
   , destroy : "DELETE /api/standards/{id}"
-  , defaults : {
-    kind : "Standard"
-  }
   , is_custom_attributable: true
   , attributes : {}
   , meta_kinds : [ "Standard" ]
   , cache : can.getObject("cache", CMS.Models.Directive, true),
-  statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-      'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+  defaults: {
+    status: 'Draft',
+    kind: 'Standard'
+  },
+  statuses: ['Draft', 'Deprecated', 'Active'],
   init: function () {
     can.extend(this.attributes, CMS.Models.Directive.attributes);
     this._super.apply(this, arguments);
@@ -123,15 +122,15 @@ CMS.Models.Directive("CMS.Models.Regulation", {
   , create : "POST /api/regulations"
   , update : "PUT /api/regulations/{id}"
   , destroy : "DELETE /api/regulations/{id}"
-  , defaults : {
-    kind : "Regulation"
-  }
   , is_custom_attributable: true
   , attributes : {}
   , meta_kinds : [ "Regulation" ]
   , cache : can.getObject("cache", CMS.Models.Directive, true),
-  statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-      'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+  defaults: {
+    status: 'Draft',
+    kind: 'Regulation'
+  },
+  statuses: ['Draft', 'Deprecated', 'Active'],
   init: function () {
     can.extend(this.attributes, CMS.Models.Directive.attributes);
     this._super.apply(this, arguments);
@@ -152,16 +151,16 @@ CMS.Models.Directive("CMS.Models.Policy", {
   , create : "POST /api/policies"
   , update : "PUT /api/policies/{id}"
   , destroy : "DELETE /api/policies/{id}"
-  , defaults : {
-      kind : null
-    }
   , tree_view_options : {}
   , is_custom_attributable: true
   , attributes : {}
   , meta_kinds : [  "Company Policy", "Org Group Policy", "Data Asset Policy", "Product Policy", "Contract-Related Policy", "Company Controls Policy" ]
   , cache : can.getObject("cache", CMS.Models.Directive, true),
-  statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-      'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+  defaults: {
+    status: 'Draft',
+    kind: null
+  },
+  statuses: ['Draft', 'Deprecated', 'Active'],
   init: function () {
     can.extend(this.attributes, CMS.Models.Directive.attributes);
     can.extend(this.tree_view_options, CMS.Models.Directive.tree_view_options);
@@ -190,16 +189,16 @@ CMS.Models.Directive("CMS.Models.Contract", {
   , create : "POST /api/contracts"
   , update : "PUT /api/contracts/{id}"
   , destroy : "DELETE /api/contracts/{id}"
-  , defaults : {
-    kind : "Contract"
-  }
   , is_custom_attributable: true
   , attributes : {
   }
   , meta_kinds : [ "Contract" ]
   , cache : can.getObject("cache", CMS.Models.Directive, true),
-  statuses: ['Draft', 'Final', 'Effective', 'Ineffective', 'Launched',
-      'Not Launched', 'In Scope', 'Not in Scope', 'Deprecated'],
+  defaults: {
+    status: 'Draft',
+    kind: 'Contract'
+  },
+  statuses: ['Draft', 'Deprecated', 'Active'],
   init: function () {
     can.extend(this.attributes, CMS.Models.Directive.attributes);
     this._super.apply(this, arguments);

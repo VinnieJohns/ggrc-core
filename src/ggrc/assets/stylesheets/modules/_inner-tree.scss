@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2017 Google Inc.
  * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
@@ -69,6 +69,28 @@
             line-height: 29px;
           }
         }
+      }
+      &.not-directly-related {
+        color: $gray;
+        .fa {
+          color: $gray;
+        }
+      }
+      &.directly-related {
+        color: $darkText;
+        .fa {
+          color: $darkText;
+        }
+        .not-directly-related {
+          .fa {
+            color: $gray;
+          }
+        }
+      }
+    }
+    &.not-directly-related-hide {
+      > .not-directly-related {
+        display: none;
       }
     }
   }

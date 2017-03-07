@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -110,7 +110,7 @@
       // Switch the active widget view if 'data-follow' was specified
       if (follow && type !== "error") {
         window.location.hash = '#' + inst.constructor.root_object + '_widget';
-        $('a[href="' + window.location.hash + '"]').trigger("click");
+        $('a[href="' + window.location.hash + '"]').trigger("click", true);
       }
     }
 

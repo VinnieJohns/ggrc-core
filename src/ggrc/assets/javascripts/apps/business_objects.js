@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -38,7 +38,6 @@
         control: CMS.Models.Control,
         assessment: CMS.Models.Assessment,
         assessment_template: CMS.Models.AssessmentTemplate,
-        request: CMS.Models.Request,
         issue: CMS.Models.Issue,
         objective: CMS.Models.Objective,
         section: CMS.Models.Section,
@@ -51,25 +50,43 @@
       };
     },
     init_widgets: function () {
-      var base_widgets_by_type = GGRC.tree_view.base_widgets_by_type;
-      var widget_list = new GGRC.WidgetList('ggrc_core');
-      var object_class = GGRC.infer_object_type(GGRC.page_object);
-      var object_table = object_class && object_class.table_plural;
+      var baseWidgetsByType = GGRC.tree_view.base_widgets_by_type;
+      var widgetList = new GGRC.WidgetList('ggrc_core');
+      var objectClass = GGRC.infer_object_type(GGRC.page_object);
+      var objectTable = objectClass && objectClass.table_plural;
       var object = GGRC.page_instance();
       var path = GGRC.mustache_path;
-      var info_widget_views;
-      var model_names;
-      var possible_model_type;
+      var infoWidgetViews;
+      var summaryWidgetViews;
+      var modelNames;
+      var possibleModelType;
       var treeViewDepth = 2;
-      var relatedObjectsChildOptions = [GGRC.Utils.getRelatedObjects(treeViewDepth)];
+      var relatedObjectsChildOptions =
+        [GGRC.Utils.getRelatedObjects(treeViewDepth)];
+      var farModels;
+      var extraDescriptorOptions;
+      var overriddenModels;
+      var extraContentControllerOptions;
 
       // TODO: Really ugly way to avoid executing IIFE - needs cleanup
       if (!GGRC.page_object) {
         return;
       }
-      // Info widgets display the object information instead of listing
+      // Info and summary widgets display the object information instead of listing
       // connected objects.
-      info_widget_views = {
+      summaryWidgetViews = {
+        audits: path + '/audits/summary.mustache'
+      };
+      if (summaryWidgetViews[objectTable]) {
+        widgetList.add_widget(object.constructor.shortName, 'summary', {
+          widget_id: 'summary',
+          content_controller: GGRC.Controllers.SummaryWidget,
+          instance: object,
+          widget_view: summaryWidgetViews[objectTable],
+          order: 3
+        });
+      }
+      infoWidgetViews = {
         programs: path + '/programs/info.mustache',
         audits: path + '/audits/info.mustache',
         people: path + '/people/info.mustache',
@@ -82,20 +99,19 @@
         assessments: path + '/assessments/info.mustache',
         assessment_templates:
           path + '/assessment_templates/info.mustache',
-        requests: path + '/requests/info.mustache',
         issues: path + '/issues/info.mustache'
       };
-      widget_list.add_widget(object.constructor.shortName, 'info', {
+      widgetList.add_widget(object.constructor.shortName, 'info', {
         widget_id: 'info',
         content_controller: GGRC.Controllers.InfoWidget,
         instance: object,
-        widget_view: info_widget_views[object_table]
+        widget_view: infoWidgetViews[objectTable],
+        order: 5
       });
-      model_names = can.Map.keys(base_widgets_by_type);
-      model_names.sort();
-      possible_model_type = model_names.slice();
-      possible_model_type.push('Request'); // Missing model-type by selection
-      can.each(model_names, function (name) {
+      modelNames = can.Map.keys(baseWidgetsByType);
+      modelNames.sort();
+      possibleModelType = modelNames.slice();
+      can.each(modelNames, function (name) {
         var w_list;
         var child_model_list = [];
 
@@ -104,10 +120,10 @@
           display_name: CMS.Models[name].title_singular
         });
         // Initialize child_model_list, and child_display_list each model_type
-        w_list = base_widgets_by_type[name];
-        w_list.sort();
+        w_list = baseWidgetsByType[name];
+
         can.each(w_list, function (item) {
-          if (possible_model_type.indexOf(item) !== -1) {
+          if (possibleModelType.indexOf(item) !== -1) {
             child_model_list.push({
               model_name: item,
               display_name: CMS.Models[item].title_singular
@@ -132,12 +148,16 @@
           var final_definition = {};
           if (definition._mixins) {
             can.each(definition._mixins, function (mixin) {
-              if (typeof (mixin) === "string") {
+              if (typeof (mixin) === 'string') {
                 // If string, recursive lookup
-                if (!definitions[mixin])
-                  console.debug("Undefined mixin: " + mixin, definitions);
-                else
-                  can.extend(final_definition, reify_mixins(definitions[mixin]));
+                if (!definitions[mixin]) {
+                  console.debug('Undefined mixin: ' + mixin, definitions);
+                } else {
+                  can.extend(
+                    final_definition,
+                    reify_mixins(definitions[mixin])
+                  );
+                }
               } else if (can.isFunction(mixin)) {
                 // If function, call with current definition state
                 mixin(final_definition);
@@ -161,107 +181,117 @@
         return mappings;
       }
 
+      // the assessments_view only needs the Assessments widget
+      if (/^\/assessments_view/.test(window.location.pathname)) {
+        farModels = ['Assessment'];
+      } else {
+        farModels = baseWidgetsByType[object.constructor.shortName];
+      }
 
-      var far_models = base_widgets_by_type[object.constructor.shortName],
         // here we are going to define extra descriptor options, meaning that
         //  these will be used as extra options to create widgets on top of
 
-      extra_descriptor_options = {
-        all: {
-          Person: {
-            widget_icon: 'fa fa-person'
-          },
-          Document: {
-            widget_icon: 'fa fa-link'
-          }
-        },
+      extraDescriptorOptions = {
+        all: (function () {
+          var defOrder = GGRC.tree_view.attr('defaultOrderTypes');
+          var all = {};
+          Object.keys(defOrder).forEach(function (type) {
+            all[type] = {
+              order: defOrder[type]
+            };
+          });
+
+          all.Document = {
+            widget_icon: 'fa fa-link!',
+            order: 150
+          };
+          all.Person.widget_icon = 'person';
+          return all;
+        })(),
         Contract: {
           Clause: {
             widget_name: function () {
-              var $objectArea = $(".object-area");
-              if ($objectArea.hasClass("dashboard-area")) {
-                return "Clauses";
-              } else {
-                return "Mapped Clauses";
-              }
+              var $objectArea = $('.object-area');
+              return $objectArea.hasClass('dashboard-area') ?
+                'Clauses' : 'Mapped Clauses';
             }
           }
         },
         Program: {
           Person: {
-            widget_id: "person",
-            widget_name: "People",
-            widget_icon: "person",
+            widget_id: 'person',
+            widget_name: 'People',
+            widget_icon: 'person',
             content_controller: GGRC.Controllers.TreeView
           }
         },
+
+        // An Audit has a different set of object that are more relevant to it,
+        // thus these objects have a customized priority. On the other hand,
+        // the object otherwise prioritized by default (e.g. Regulation) have
+        // their priority lowered so that they fit nicely into the alphabetical
+        // order among the non-prioritized object types.
         Audit: {
+          Assessment: {
+            order: 6
+          },
+          Issue: {
+            order: 7
+          },
+          Program: {
+            order: 8
+          },
+          program: {
+            widget_id: 'program',
+            widget_name: 'Program',
+            widget_icon: 'program'
+          },
           Person: {
-            widget_id: "person",
-            widget_name: "People",
-            widget_icon: "person",
+            widget_id: 'person',
+            widget_name: 'People',
+            widget_icon: 'person',
+            // NOTE: "order" not overridden
             content_controller: GGRC.Controllers.TreeView,
             content_controller_options: {
-              mapping: "authorized_people",
+              mapping: 'authorized_people',
               allow_mapping: false,
               allow_creating: false
             }
-          },
-          Request: {
-            widget_id: 'Request',
-            widget_name: 'Requests'
-          },
-          program: {
-            widget_id: "program",
-            widget_name: "Program",
-            widget_icon: "program"
-          }
-        },
-        Control: {
-          Request: {
-            widget_id: "Request",
-            widget_name: "Requests"
-          }
-        },
-        Person: {
-          Request: {
-            widget_id: "Request",
-            widget_name: "Requests"
           }
         }
-      },
+      };
       // Prevent widget creation with <model_name>: false
       // e.g. to prevent ever creating People widget:
       //     { all : { Person: false }}
       // or to prevent creating People widget on Objective page:
       //     { Objective: { Person: false } }
-      overridden_models = {
+      overriddenModels = {
         Program: {
         },
         all: {
           Document: false
         }
-      },
+      };
 
-      extra_content_controller_options = apply_mixins({
+      extraContentControllerOptions = apply_mixins({
         objectives: {
           Objective: {
-            mapping: "objectives",
+            mapping: 'objectives',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
-            show_view: path + "/objectives/tree.mustache",
-            footer_view: path + "/objectives/tree_footer.mustache",
-            add_item_view: path + "/objectives/tree_add_item.mustache"
+            show_view: path + '/objectives/tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
+            add_item_view: path + '/snapshots/tree_add_item.mustache'
           }
         },
         controls: {
           Control: {
-            mapping: "controls",
+            mapping: 'controls',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
-            show_view: path + "/controls/tree.mustache",
-            footer_view: path + "/controls/tree_footer.mustache",
-            add_item_view: path + "/controls/tree_add_item.mustache"
+            show_view: path + '/controls/tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
+            add_item_view: path + '/snapshots/tree_add_item.mustache'
           }
         },
         business_objects: {
@@ -273,81 +303,73 @@
             add_item_view: path + '/audits/tree_add_item.mustache'
           },
           AccessGroup: {
-            mapping: "related_access_groups",
+            mapping: 'related_access_groups',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           DataAsset: {
-            mapping: "related_data_assets",
+            mapping: 'related_data_assets',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Facility: {
-            mapping: "related_facilities",
+            mapping: 'related_facilities',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Market: {
-            mapping: "related_markets",
+            mapping: 'related_markets',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           OrgGroup: {
-            mapping: "related_org_groups",
+            mapping: 'related_org_groups',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Vendor: {
-            mapping: "related_vendors",
+            mapping: 'related_vendors',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Process: {
-            mapping: "related_processes",
+            mapping: 'related_processes',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Product: {
-            mapping: "related_products",
+            mapping: 'related_products',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Project: {
-            mapping: "related_projects",
+            mapping: 'related_projects',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           System: {
-            mapping: "related_systems",
+            mapping: 'related_systems',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Assessment: {
-            mapping: "related_assessments",
+            mapping: 'related_assessments',
             child_options: relatedObjectsChildOptions,
-            draw_children: true
-          },
-          Request: {
-            mapping: "related_requests",
-            child_options: [
-              _.extend({}, relatedObjectsChildOptions[0], {
-                mapping: "info_related_objects"
-              })
-            ],
-            draw_children: true
+            draw_children: true,
+            footer_view: path + '/base_objects/tree_footer.mustache'
           },
           Document: {
-            mapping: "documents",
+            mapping: 'documents',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Person: {
-            mapping: "people",
+            mapping: 'people',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Program: {
-            mapping: "programs",
+            mapping: 'programs',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           }
@@ -358,7 +380,7 @@
             footer_view: GGRC.mustache_path +
               '/base_objects/tree_footer.mustache',
             add_item_view: GGRC.mustache_path +
-              '/base_objects/tree_add_item.mustache',
+              '/issues/tree_add_item.mustache',
             child_options: relatedObjectsChildOptions.concat({
               model: CMS.Models.Person,
               mapping: 'people',
@@ -373,115 +395,108 @@
         },
         governance_objects: {
           Regulation: {
-            mapping: "regulations",
+            mapping: 'regulations',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache",
-            footer_view: path + "/directives/tree_footer.mustache",
-            add_item_view: path + "/directives/tree_add_item.mustache"
+            show_view: path + '/directives/tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
+            add_item_view: path + '/snapshots/tree_add_item.mustache'
           },
           Contract: {
-            mapping: "contracts",
+            mapping: 'contracts',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache",
-            footer_view: path + "/directives/tree_footer.mustache",
+            show_view: path + '/directives/tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache'
           },
           Policy: {
-            mapping: "policies",
+            mapping: 'policies',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache",
-            footer_view: path + "/directives/tree_footer.mustache",
-            add_item_view: path + "/directives/tree_add_item.mustache"
+            show_view: path + '/directives/tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
+            add_item_view: path + '/snapshots/tree_add_item.mustache'
           },
           Standard: {
-            mapping: "standards",
+            mapping: 'standards',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache",
-            footer_view: path + "/directives/tree_footer.mustache",
-            add_item_view: path + "/directives/tree_add_item.mustache"
+            show_view: path + '/directives/tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
+            add_item_view: path + '/snapshots/tree_add_item.mustache'
           },
           Control: {
-            mapping: "controls",
+            mapping: 'controls',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Objective: {
-            mapping: "objectives",
+            mapping: 'objectives',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Section: {
-            mapping: "sections",
+            mapping: 'sections',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Clause: {
-            mapping: "clauses",
+            mapping: 'clauses',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           }
         },
         Program: {
           _mixins: [
-            "governance_objects", "objectives", "controls", "business_objects", "issues"
+            'governance_objects', 'objectives', 'controls',
+            'business_objects', 'issues'
           ],
           Audit: {
-            mapping: "audits",
+            mapping: 'audits',
             allow_mapping: true,
             child_options: relatedObjectsChildOptions,
             draw_children: true,
-            show_view: path + "/audits/tree.mustache",
-            header_view: path + "/audits/tree_header.mustache",
-            footer_view: path + "/audits/tree_footer.mustache",
-            add_item_view: path + "/audits/tree_add_item.mustache"
+            show_view: path + '/audits/tree.mustache',
+            header_view: path + '/audits/tree_header.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
+            add_item_view: path + '/audits/tree_add_item.mustache'
           },
           Person: {
-            show_view: path + "/ggrc_basic_permissions/people_roles/authorizations_by_person_tree.mustache",
-            footer_view: path + "/ggrc_basic_permissions/people_roles/authorizations_by_person_tree_footer.mustache",
+            show_view: path + '/ggrc_basic_permissions/people_roles/authorizations_by_person_tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
             parent_instance: GGRC.page_instance(),
             allow_reading: true,
             allow_mapping: true,
             allow_creating: true,
             model: CMS.Models.Person,
-            mapping: "mapped_and_or_authorized_people",
+            mapping: 'mapped_and_or_authorized_people',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           }
         },
         Audit: {
           _mixins: ['issues', 'governance_objects', 'business_objects'],
-          Request: {
-            mapping: "active_requests",
-            child_options: relatedObjectsChildOptions,
-            draw_children: true,
-            show_view: path + "/requests/tree.mustache",
-            footer_view: path + "/requests/tree_footer.mustache",
-            add_item_view: path + "/requests/tree_add_item.mustache"
-          },
           Program: {
-            mapping: "_program",
+            mapping: '_program',
             parent_instance: GGRC.page_instance(),
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             model: CMS.Models.Program,
-            show_view: path + "/programs/tree.mustache",
+            show_view: path + '/programs/tree.mustache',
             allow_mapping: false,
             allow_creating: false
           },
           Section: {
-            mapping: "sections",
+            mapping: 'sections',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Clause: {
-            mapping: "clauses",
+            mapping: 'clauses',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
@@ -494,7 +509,7 @@
             model: CMS.Models.Assessment,
             show_view: path + '/base_objects/tree.mustache',
             header_view: path + '/base_objects/tree_header.mustache',
-            footer_view: path + '/assessments/tree_footer.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache',
             add_item_view: path + '/assessments/tree_add_item.mustache'
           },
           AssessmentTemplate: {
@@ -510,14 +525,14 @@
               '/assessment_templates/tree_add_item.mustache'
           },
           Person: {
-            widget_id: "person",
-            widget_name: "People",
-            widget_icon: "person",
+            widget_id: 'person',
+            widget_name: 'People',
+            widget_icon: 'person',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             content_controller: GGRC.Controllers.TreeView,
             content_controller_options: {
-              mapping: "authorized_people",
+              mapping: 'authorized_people',
               allow_mapping: false,
               allow_creating: false
             }
@@ -525,15 +540,15 @@
         },
         directive: {
           _mixins: [
-            "objectives", "controls", "business_objects"
+            'objectives', 'controls', 'business_objects'
           ],
           Section: {
-            mapping: "sections",
+            mapping: 'sections',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Clause: {
-            mapping: "clauses",
+            mapping: 'clauses',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
@@ -544,16 +559,16 @@
           }
          },
         Regulation: {
-          _mixins: ["directive", "issues"]
+          _mixins: ['directive', 'issues']
         },
         Standard: {
-          _mixins: ["directive", "issues"]
+          _mixins: ['directive', 'issues']
         },
         Policy: {
-          _mixins: ["directive", "issues"]
+          _mixins: ['directive', 'issues']
         },
         Contract: {
-          _mixins: ["directive", "issues"]
+          _mixins: ['directive', 'issues']
         },
         Clause: {
           _mixins: ['governance_objects', 'business_objects', 'issues'],
@@ -587,52 +602,32 @@
             draw_children: true
           }
         },
-        Request: {
-          _mixins: ["governance_objects", "business_objects", "issues"],
-          Audit: {
-            mapping: "audits",
-            child_options: relatedObjectsChildOptions,
-            draw_children: true,
-            allow_creating: false,
-            allow_mapping: false,
-            show_view: path + "/audits/tree.mustache",
-            add_item_view: path + "/audits/tree_add_item.mustache"
-          },
-        },
         Assessment: {
-          _mixins: ["governance_objects", "business_objects", "issues"],
+          _mixins: ['governance_objects', 'business_objects', 'issues'],
           Audit: {
-            mapping: "related_audits",
+            mapping: 'related_audits',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             allow_creating: false,
             allow_mapping: true,
-            show_view: path + "/audits/tree.mustache",
-            add_item_view: path + "/audits/tree_add_item.mustache"
+            show_view: path + '/audits/tree.mustache',
+            add_item_view: path + '/audits/tree_add_item.mustache'
           },
           Section: {
-            mapping: "sections",
+            mapping: 'sections',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
           Clause: {
-            mapping: "clauses",
+            mapping: 'clauses',
             child_options: relatedObjectsChildOptions,
             draw_children: true
-          },
-          Request: {
-            mapping: "related_requests",
-            child_options: relatedObjectsChildOptions,
-            draw_children: true,
-            show_view: path + "/requests/tree.mustache",
-            footer_view: path + "/requests/tree_footer.mustache",
-            add_item_view: path + "/requests/tree_add_item.mustache"
           }
         },
         Issue: {
           _mixins: ['governance_objects', 'business_objects'],
           Control: {
-            mapping: "related_controls",
+            mapping: 'related_controls',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             show_view: path + '/controls/tree.mustache',
@@ -642,107 +637,103 @@
           Issue: {
             mapping: 'related_issues',
             footer_view: path + '/base_objects/tree_footer.mustache',
-            add_item_view: path + '/base_objects/tree_add_item.mustache'
+            add_item_view: path + '/issues/tree_add_item.mustache'
           },
           Audit: {
-            mapping: "related_audits",
+            mapping: 'related_audits',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
-            show_view: GGRC.mustache_path + "/audits/tree.mustache",
-            footer_view: GGRC.mustache_path + "/base_objects/tree_footer.mustache",
-            add_item_view: GGRC.mustache_path + "/base_objects/tree_add_item.mustache"
+            show_view: GGRC.mustache_path + '/audits/tree.mustache',
+            footer_view:
+              GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+            add_item_view:
+              GGRC.mustache_path + '/base_objects/tree_add_item.mustache'
           }
         },
         AccessGroup: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         DataAsset: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Facility: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Market: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         OrgGroup: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Vendor: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Process: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Product: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Project: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         System: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Document: {
-          _mixins: ["governance_objects", "business_objects", "issues"]
+          _mixins: ['governance_objects', 'business_objects', 'issues']
         },
         Person: {
-          _mixins: ["issues"],
-          Request: {
-            mapping: (/^\/objectBrowser\/?$/.test(window.location.pathname)) ?
-              "all_open_audit_requests" : "open_audit_requests",
-            draw_children: true,
-            child_options: relatedObjectsChildOptions,
-            show_view: GGRC.mustache_path + "/requests/tree.mustache",
-            footer_view: GGRC.mustache_path + "/requests/tree_footer.mustache",
-            add_item_view: GGRC.mustache_path + "/requests/tree_add_item.mustache"
-          },
+          _mixins: ['issues'],
           Program: {
-            mapping: "extended_related_programs_via_search",
+            mapping: 'extended_related_programs_via_search',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections
           },
           Regulation: {
-            mapping: "extended_related_regulations_via_search",
+            mapping: 'extended_related_regulations_via_search',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache"
+            show_view: path + '/directives/tree.mustache'
           },
           Contract: {
-            mapping: "extended_related_contracts_via_search",
+            mapping: 'extended_related_contracts_via_search',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache"
+            show_view: path + '/directives/tree.mustache'
           },
           Standard: {
-            mapping: "extended_related_standards_via_search",
+            mapping: 'extended_related_standards_via_search',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache"
+            show_view: path + '/directives/tree.mustache'
           },
           Policy: {
-            mapping: "extended_related_policies_via_search",
+            mapping: 'extended_related_policies_via_search',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
             fetch_post_process: sort_sections,
-            show_view: path + "/directives/tree.mustache"
+            show_view: path + '/directives/tree.mustache'
           },
           Audit: {
-            mapping: "extended_related_audits_via_search",
+            mapping: 'extended_related_audits_via_search',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
-            show_view: path + "/audits/tree.mustache"
+            show_view: path + '/audits/tree.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache'
           },
           Section: {
             model: CMS.Models.Section,
-            mapping: "extended_related_sections_via_search",
-            show_view: GGRC.mustache_path + "/sections/tree.mustache",
-            footer_view: GGRC.mustache_path + "/base_objects/tree_footer.mustache",
-            add_item_view: GGRC.mustache_path + "/base_objects/tree_add_item.mustache",
+            mapping: 'extended_related_sections_via_search',
+            show_view: GGRC.mustache_path + '/sections/tree.mustache',
+            footer_view:
+              GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+            add_item_view:
+              GGRC.mustache_path + '/base_objects/tree_add_item.mustache',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
@@ -750,8 +741,10 @@
             model: CMS.Models.Clause,
             mapping: 'extended_related_clauses_via_search',
             show_view: GGRC.mustache_path + '/sections/tree.mustache',
-            footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
-            add_item_view: GGRC.mustache_path + '/base_objects/tree_add_item.mustache',
+            footer_view:
+              GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+            add_item_view:
+              GGRC.mustache_path + '/base_objects/tree_add_item.mustache',
             child_options: relatedObjectsChildOptions,
             draw_children: true
           },
@@ -774,7 +767,8 @@
           Issue: {
             mapping: 'extended_related_issues_via_search',
             child_options: relatedObjectsChildOptions,
-            draw_children: true
+            draw_children: true,
+            footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache'
           },
           AccessGroup: {
             mapping: 'extended_related_access_groups_via_search',
@@ -833,15 +827,16 @@
             mapping: 'extended_related_assessment_via_search',
             child_options: relatedObjectsChildOptions,
             draw_children: true,
-            header_view:
-              path + '/assessments/tree_header.mustache'
+            add_item_view: null,
+            header_view: path + '/assessments/tree_header.mustache',
+            footer_view: path + '/base_objects/tree_footer.mustache'
           }
         }
       });
 
       // Disable editing on profile pages, as long as it isn't audits on the dashboard
       if (GGRC.page_instance() instanceof CMS.Models.Person) {
-        var person_options = extra_content_controller_options.Person;
+        var person_options = extraContentControllerOptions.Person;
         can.each(person_options, function (options, model_name) {
           if (model_name !== 'Audit' || !/dashboard/.test(window.location)) {
             can.extend(options, {
@@ -852,8 +847,8 @@
         });
       }
 
-      can.each(far_models, function (model_name) {
-        if ((overridden_models.all && overridden_models.all.hasOwnProperty(model_name) && !overridden_models[model_name]) || (overridden_models[object.constructor.shortName] && overridden_models[object.constructor.shortName].hasOwnProperty(model_name) && !overridden_models[object.constructor.shortName][model_name]))
+      can.each(farModels, function (model_name) {
+        if ((overriddenModels.all && overriddenModels.all.hasOwnProperty(model_name) && !overriddenModels[model_name]) || (overriddenModels[object.constructor.shortName] && overriddenModels[object.constructor.shortName].hasOwnProperty(model_name) && !overriddenModels[object.constructor.shortName][model_name]))
           return;
         var sources = [],
           far_model, descriptor = {},
@@ -872,26 +867,26 @@
         }
 
         // Custom overrides
-        if (extra_descriptor_options.all && extra_descriptor_options.all[model_name]) {
-          $.extend(descriptor, extra_descriptor_options.all[model_name]);
+        if (extraDescriptorOptions.all && extraDescriptorOptions.all[model_name]) {
+          $.extend(descriptor, extraDescriptorOptions.all[model_name]);
         }
 
-        if (extra_descriptor_options[object.constructor.shortName] && extra_descriptor_options[object.constructor.shortName][model_name]) {
-          $.extend(descriptor, extra_descriptor_options[object.constructor.shortName][model_name]);
+        if (extraDescriptorOptions[object.constructor.shortName] && extraDescriptorOptions[object.constructor.shortName][model_name]) {
+          $.extend(descriptor, extraDescriptorOptions[object.constructor.shortName][model_name]);
         }
 
-        if (extra_content_controller_options.all && extra_content_controller_options.all[model_name]) {
+        if (extraContentControllerOptions.all && extraContentControllerOptions.all[model_name]) {
           $.extend(true, descriptor, {
-            content_controller_options: extra_content_controller_options.all[model_name]
+            content_controller_options: extraContentControllerOptions.all[model_name]
           });
         }
 
-        if (extra_content_controller_options[object.constructor.shortName] && extra_content_controller_options[object.constructor.shortName][model_name]) {
+        if (extraContentControllerOptions[object.constructor.shortName] && extraContentControllerOptions[object.constructor.shortName][model_name]) {
           $.extend(true, descriptor, {
-            content_controller_options: extra_content_controller_options[object.constructor.shortName][model_name]
+            content_controller_options: extraContentControllerOptions[object.constructor.shortName][model_name]
           });
         }
-        widget_list.add_widget(object.constructor.shortName, widget_id, descriptor);
+        widgetList.add_widget(object.constructor.shortName, widget_id, descriptor);
       });
     }
   });

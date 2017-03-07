@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 
@@ -11,19 +11,24 @@
 from collections import defaultdict
 from datetime import date
 from datetime import datetime
-from flask import current_app
-from sqlalchemy import and_
-from werkzeug.exceptions import Forbidden
+from logging import getLogger
 
+from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
+from werkzeug.exceptions import Forbidden
 from google.appengine.api import mail
 
 from ggrc import db
 from ggrc import extensions
 from ggrc import settings
+from ggrc.models import Person
 from ggrc.models import Notification
-from ggrc.models import NotificationConfig
 from ggrc.rbac import permissions
 from ggrc.utils import merge_dict
+
+
+# pylint: disable=invalid-name
+logger = getLogger(__name__)
 
 
 class Services(object):
@@ -45,7 +50,7 @@ class Services(object):
 
     Args:
       name: Name of an object for which we want to get a service function, such
-        as "Request", "CycleTask", "Assessment", etc.
+        as "CycleTask", "Assessment", etc.
 
     Returns:
       callable: A function that takes a notification and returns a data dict
@@ -73,7 +78,7 @@ class Services(object):
     return service(notif)
 
 
-def get_filter_data(notification):
+def get_filter_data(notification, people_cache):
   """Get filtered notification data.
 
   This function gets notification data for all users who should receive it. A
@@ -93,7 +98,7 @@ def get_filter_data(notification):
   data = Services.call_service(notification)
 
   for user, user_data in data.iteritems():
-    if should_receive(notification, user_data):
+    if should_receive(notification, user_data, people_cache):
       result[user] = user_data
   return result
 
@@ -115,9 +120,10 @@ def get_notification_data(notifications):
   if not notifications:
     return {}
   aggregate_data = {}
+  people_cache = {}
 
   for notification in notifications:
-    filtered_data = get_filter_data(notification)
+    filtered_data = get_filter_data(notification, people_cache)
     aggregate_data = merge_dict(aggregate_data, filtered_data)
 
   # Remove notifications for objects without a contact (such as task groups)
@@ -167,7 +173,7 @@ def get_daily_notifications():
   return notifications, get_notification_data(notifications)
 
 
-def should_receive(notif, user_data):
+def should_receive(notif, user_data, people_cache):
   """Check if a user should receive a notification or not.
 
   Args:
@@ -179,8 +185,23 @@ def should_receive(notif, user_data):
   """
   force_notif = user_data.get("force_notifications", {}).get(notif.id, False)
   person_id = user_data["user"]["id"]
+  # The person does not exist
+  if person_id == -1:
+    return False
+  if person_id in people_cache:
+    person = people_cache[person_id]
+  else:
+    person = db.session.query(Person).options(
+        joinedload('user_roles').joinedload('role'),
+        joinedload('notification_configs')
+    ).filter(Person.id == person_id).first()
+    people_cache[person_id] = person
 
-  def is_enabled(notif_type):
+  # If the user has no access we should not send any emails
+  if person.system_wide_role == "No Access":
+    return False
+
+  def is_enabled(notif_type, person):
     """Check user notification settings.
 
     Args:
@@ -191,16 +212,16 @@ def should_receive(notif, user_data):
       Boolean based on what settings users has stored or what the default
       setting is for the given notification.
     """
-    result = NotificationConfig.query.filter(
-        and_(NotificationConfig.person_id == person_id,
-             NotificationConfig.notif_type == notif_type))
-    if result.count() == 0:
+
+    notification_configs = [nc for nc in person.notification_configs
+                            if nc.notif_type == notif_type]
+    if not notification_configs:
       # If we have no results, we need to use the default value, which is
       # true for digest emails.
       return notif_type == "Email_Digest"
-    return result.one().enable_flag
+    return notification_configs[0].enable_flag
 
-  has_digest = force_notif or is_enabled("Email_Digest")
+  has_digest = force_notif or is_enabled("Email_Digest", person)
 
   return has_digest
 
@@ -214,7 +235,7 @@ def send_daily_digest_notifications():
   # pylint: disable=invalid-name
   notif_list, notif_data = get_daily_notifications()
   sent_emails = []
-  subject = "gGRC daily digest for {}".format(date.today().strftime("%b %d"))
+  subject = "GGRC daily digest for {}".format(date.today().strftime("%b %d"))
   for user_email, data in notif_data.iteritems():
     data = modify_data(data)
     email_body = settings.EMAIL_DIGEST.render(digest=data)
@@ -299,10 +320,10 @@ def send_email(user_email, subject, body):
   """
   sender = get_app_engine_email()
   if not mail.is_email_valid(user_email):
-    current_app.logger.error("Invalid email recipient: {}".format(user_email))
+    logger.error("Invalid email recipient: %s", user_email)
     return
   if not sender:
-    current_app.logger.error("APPENGINE_EMAIL setting is invalid.")
+    logger.error("APPENGINE_EMAIL setting is invalid.")
     return
 
   message = mail.EmailMessage(sender=sender, subject=subject)
@@ -336,8 +357,8 @@ def modify_data(data):
 
   # combine "my_tasks" from multiple cycles
   data["cycle_started_tasks"] = {}
-  if "cycle_started" in data:
-    for cycle in data["cycle_started"].values():
+  if "cycle_data" in data:
+    for cycle in data["cycle_data"].values():
       if "my_tasks" in cycle:
         data["cycle_started_tasks"].update(cycle["my_tasks"])
 

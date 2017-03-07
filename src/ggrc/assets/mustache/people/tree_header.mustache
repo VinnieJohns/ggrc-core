@@ -1,43 +1,44 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
-{{{> "/static/mustache/base_objects/tree_view_filter.mustache"}}}
+<div class="header tree-header-content">
+  {{> '/static/mustache/base_objects/tree_view_filter.mustache'}}
 
-<header class="header sticky sticky-header tree-header {{#filter_is_hidden}}no-filter{{/filter_is_hidden}}">
-  <div class="row-fluid">
-    <div class="span4">
-      <div class="title-heading oneline">
-        <span class="widget-col-title" data-field="title|description_inline|name|email">
-          {{model.title_singular}} Name
-          <i class="fa fa-caret-up"></i>
-        </span>
+  <header class="header tree-header">
+    <div class="row-fluid">
+      <div class="span4">
+        <div class="title-heading oneline">
+          <span class="widget-col-title" data-field="title">
+            Name
+            <i class="fa fa-caret-up"></i>
+          </span>
+        </div>
       </div>
-    </div>
-    <div class="span2">
-      <div class="oneline">
-        <span class="widget-col-title" data-field="email">
-          Email
-          <i class="fa fa-caret-up"></i>
-        </span>
+      <div class="span2">
+        <div class="oneline">
+          <span class="widget-col-title" data-field="email">
+            Email
+            <i class="fa fa-caret-up"></i>
+          </span>
+        </div>
       </div>
-    </div>
-    <div class="span2">
-      <div class="oneline">
-        Authorizations
+      <div class="span2">
+        <div class="oneline">
+          Authorizations
+        </div>
       </div>
-    </div>
-    <div class="span4">
-      <ul class="tree-action-list">
-        {{{> "/static/mustache/base_objects/filter_trigger.mustache}}}
-        {{#if add_item_view}}
+      <div class="span4">
+        <ul class="tree-action-list">
+          {{#if add_item_view}}
           <li>
             {{{renderLive add_item_view}}}
           </li>
-        {{/if}}
-      </ul>
+          {{/if}}
+        </ul>
+      </div>
     </div>
-  </div>
-</header>
+  </header>
+</div>
 <div class="clearfix"></div>

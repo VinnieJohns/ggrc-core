@@ -1,20 +1,40 @@
 {{!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 }}
 
-<h6>Filter by mapping</h6>
+<h6>
+  <span>
+    Filter by mapping
+  </span>
+  <span class="add-rule">
+    {{^readOnly}}
+      <a href="javascript://" can-click="addFilter" class="add-filter-rule">
+        <i class="fa fa-fw fa-plus-circle"></i>
+      </a>
+    {{/readOnly}}
+  </span>
+</h6>
 {{#each relevant}}
   <div class="single-line-filter">
-    <button type="submit" data-index="{{@index}}" class="remove_filter">
-      <i class="fa fa-trash"></i>
-    </button>
+    {{^readOnly}}
+      <button type="submit" data-index="{{@index}}" class="remove_filter">
+        <i class="fa fa-trash"></i>
+      </button>
+    {{/readOnly}}
     <label>
       {{#if @index}}AND {{/if}}Mapped to:
     </label>
-    <select class="input-small filter-type-selector select-filter{{@index}}" can-value="model_name">
+    <select class="input-small filter-type-selector select-filter{{@index}}"
+            {{#readOnly}}disabled="disabled"{{/readOnly}}
+            can-value="model_name">
       {{#menu}}
-        {{#if model_singular}}<option value="{{model_singular}}" label="{{title_singular}}"></option>{{/if}}
+        {{#if model_singular}}
+          <option value="{{model_singular}}"
+                  label="{{title_singular}}"
+                  {{#optionHidden}}hidden{{/optionHidden}}>
+          </option>
+        {{/if}}
       {{/menu}}
     </select>
     {{#filter}}
@@ -24,6 +44,7 @@
         {{#model_name}}
         <div class="modal-search objective-selector">
           <input
+            {{#readOnly}}disabled="disabled"{{/readOnly}}
             class="input-large search-icon search-filter-{{@index}}"
             placeholder="Enter text to search for {{model_name}}"
             type="text"
@@ -32,7 +53,7 @@
             value="{{firstnonempty filter.name filter.email filter.title}}"
             data-lookup="{{this}}"
             data-template="/{{#if_equals model_name 'Person'}}people{{else}}base_objects{{/if_equals}}/autocomplete_result.mustache"
-            {{ autocomplete_select }}
+            {{ autocomplete_select disableCreate }}
             >
         </div>
         {{/model_name}}
@@ -40,6 +61,3 @@
     {{/filter}}
   </div>
 {{/each}}
-<div class="add-rule">
-  <a href="javascript://" can-click="addFilter" class="add-filter-rule">+ Add New Rule</a>
-</div>

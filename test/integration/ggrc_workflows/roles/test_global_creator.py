@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """
 Test if global creator role has the permission to access the workflow objects,
@@ -23,8 +23,7 @@ class GlobalCreatorGetTest(WorkflowRolesTestCase):
   """
 
   def setUp(self):
-    # old-style class
-    WorkflowRolesTestCase.setUp(self)
+    super(GlobalCreatorGetTest, self).setUp()
     self.api.set_user(self.users['creator'])
 
   def test_get_obj(self):

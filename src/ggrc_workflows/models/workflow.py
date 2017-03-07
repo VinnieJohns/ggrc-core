@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 """Workflow object and WorkflowState mixins.
@@ -9,7 +9,6 @@ of the Objects that are mapped to any cycle tasks.
 
 from datetime import date
 from sqlalchemy import and_
-from sqlalchemy import not_
 from sqlalchemy import orm
 
 from ggrc import db
@@ -22,16 +21,13 @@ from ggrc.models.associationproxy import association_proxy
 from ggrc.models.computed_property import computed_property
 from ggrc.models.context import HasOwnContext
 from ggrc.models.deferred import deferred
-from ggrc.models.person import Person
-from ggrc_basic_permissions.models import UserRole
 from ggrc_workflows.models import cycle
 from ggrc_workflows.models import cycle_task_group
-from ggrc_workflows.models import workflow_person
 
 
 class Workflow(mixins.CustomAttributable, HasOwnContext, mixins.Timeboxed,
-               mixins.Described, mixins.Titled, mixins.Slugged,
-               mixins.Stateful, mixins.Base, db.Model):
+               mixins.Described, mixins.Titled,
+               mixins.Notifiable, mixins.Stateful, mixins.Slugged, db.Model):
   """Basic Workflow first class object.
   """
   __tablename__ = 'workflows'
@@ -156,11 +152,6 @@ class Workflow(mixins.CustomAttributable, HasOwnContext, mixins.Timeboxed,
           "type": reflection.AttributeInfo.Type.USER_ROLE,
           "filter_by": "_filter_by_workflow_member",
       },
-      "workflow_mapped": {
-          "display_name": "No Access",
-          "type": reflection.AttributeInfo.Type.USER_ROLE,
-          "filter_by": "_filter_by_no_access",
-      },
       "status": None,
       "start_date": None,
       "end_date": None,
@@ -173,28 +164,6 @@ class Workflow(mixins.CustomAttributable, HasOwnContext, mixins.Timeboxed,
   @classmethod
   def _filter_by_workflow_member(cls, predicate):
     return cls._filter_by_role("WorkflowMember", predicate)
-
-  @classmethod
-  def _filter_by_no_access(cls, predicate):
-    """Get query that filters workflows with mapped users.
-
-    Args:
-      predicate: lambda function that excepts a single parameter and returns
-        true of false.
-
-    Returns:
-      An sqlalchemy query that evaluates to true or false and can be used in
-      filtering workflows by no_access users.
-    """
-    is_no_access = not_(UserRole.query.filter(
-        (UserRole.person_id == Person.id) &
-        (UserRole.context_id == workflow_person.WorkflowPerson.context_id)
-    ).exists())
-    return workflow_person.WorkflowPerson.query.filter(
-        (cls.id == workflow_person.WorkflowPerson.workflow_id) & is_no_access
-    ).join(Person).filter(
-        (predicate(Person.name) | predicate(Person.email))
-    ).exists()
 
   def copy(self, _other=None, **kwargs):
     """Create a partial copy of the current workflow.
@@ -312,7 +281,6 @@ class WorkflowState(object):
 
   _publish_attrs = [reflection.PublishOnly('workflow_state')]
   _update_attrs = []
-  _stub_attrs = []
 
   @classmethod
   def _get_state(cls, current_tasks):
@@ -375,7 +343,7 @@ class WorkflowState(object):
 
     today = date.today()
     overdue_tasks = any(task.end_date and
-                        task.end_date <= today and
+                        task.end_date < today and
                         task.status != "Verified"
                         for task in current_tasks)
 
@@ -408,7 +376,7 @@ class WorkflowState(object):
     for cycle in current_cycles:
       for task in cycle.cycle_task_group_object_tasks:
         if (task.status != "Verified" and
-           task.end_date is not None and task.end_date <= today):
+           task.end_date is not None and task.end_date < today):
           return "Overdue"
 
     return cls._get_state(current_cycles)

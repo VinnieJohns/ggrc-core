@@ -1,5 +1,5 @@
 /*!
-    Copyright (C) 2016 Google Inc.
+    Copyright (C) 2017 Google Inc.
     Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 */
 
@@ -92,6 +92,20 @@ jQuery(function ($) {
       data = $.extend({}, $this.data('context') || {}, $this.data());
       $(target).tmpl_mergeitems([data]);
     }
+  });
+
+  $('body').on('click', '[data-toggle="nested-dropdown"]', function (e) {
+    var $parent = $(this).parent();
+    var isActive = $parent.hasClass('open');
+    if (!isActive) {
+      $parent.toggleClass('open');
+    }
+    e.stopPropagation();
+    e.preventDefault();
+  });
+
+  $('html').on('click.dropdown.data-api', function (e) {
+    $('[data-toggle="nested-dropdown"]').parent().removeClass('open');
   });
 });
 
@@ -389,6 +403,8 @@ function resize_areas(event, target_info_pin_height) {
     .css('margin-left', internavWidth)
     .css('height', internavHeight)
     .css('width', objectWidth);
+
+  $objectArea.trigger('change');
 
   function object_area_height() {
     var height = winHeight - not_main_elements_height();

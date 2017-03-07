@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Google Inc.
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 from integration.ggrc import TestCase
@@ -6,12 +6,14 @@ from freezegun import freeze_time
 from datetime import datetime
 from mock import patch
 
+from ggrc import db
 from ggrc.notifications import common
 from ggrc.models import Notification, Person
 from ggrc_workflows.models import Workflow
 from integration.ggrc_workflows.generator import WorkflowsGenerator
 from integration.ggrc.api_helper import Api
 from integration.ggrc.generator import ObjectGenerator
+from integration.ggrc.models import factories
 
 
 class TestNotificationsForDeletedObjects(TestCase):
@@ -21,7 +23,7 @@ class TestNotificationsForDeletedObjects(TestCase):
   """
 
   def setUp(self):
-    TestCase.setUp(self)
+    super(TestNotificationsForDeletedObjects, self).setUp()
     self.api = Api()
     self.wf_generator = WorkflowsGenerator()
     self.object_generator = ObjectGenerator()
@@ -62,9 +64,22 @@ class TestNotificationsForDeletedObjects(TestCase):
       self.assertIn("cycle_starts_in", notif_data[user.email])
 
       workflow = Workflow.query.get(workflow.id)
-
+      # After workflow deletion its notifications object_ids updated to 0
+      # value, this is the error, them should be deleted
+      # so this query checks existence of notifications with object_id
+      # equal to workflow id or 0 id before and
+      # after deletion workflow instance
+      exists_qs = db.session.query(
+          Notification.query.filter(
+              Notification.object_type == workflow.__class__.__name__,
+              Notification.object_id.in_((workflow.id, 0))
+          ).exists()
+      )
+      self.assertTrue(exists_qs.one()[0])
       response = self.wf_generator.api.delete(workflow)
       self.assert200(response)
+
+      self.assertFalse(exists_qs.one()[0])
 
       _, notif_data = common.get_daily_notifications()
       user = Person.query.get(self.user.id)
@@ -90,7 +105,7 @@ class TestNotificationsForDeletedObjects(TestCase):
             "contact": person_dict(self.user.id),
             "task_group_tasks": [{
                 "contact": person_dict(self.user.id),
-                "description": self.wf_generator.random_str(100),
+                "description": factories.random_str(100),
                 "relative_start_day": 5,
                 "relative_start_month": 2,
                 "relative_end_day": 25,
