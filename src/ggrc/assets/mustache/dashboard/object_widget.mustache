@@ -1,0 +1,68 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{!section class="widget... }}
+  {{#if_equals widget_id "roles_list"}}
+    <header class="header tree-header no-left-space {{#filter_is_hidden}}no-filter{{/filter_is_hidden}}">
+      <div class="row-fluid">
+        <div class="span6">
+          <div class="title-heading oneline">
+            Role
+          </div>
+        </div>
+        <div class="span6">
+          <div class="title-heading oneline right">
+            Role Scope
+          </div>
+        </div>
+      </div>
+    </header>
+  {{/if_equals}}
+
+  {{#if_equals widget_id "custom_attribute"}}
+  {{^is_dashboard}}
+    <header class="header">
+      <h2>
+        <i class="fa fa-workflow color"></i>
+        {{{widget_name}}}
+      </h2>
+    </header>
+  {{/is_dashboard}}
+  {{/if_equals}}
+
+  {{#if_equals widget_id "events_list"}}
+  {{^is_dashboard}}
+    <header class="header">
+      <h2>
+        <i class="fa-history"></i>
+        {{{widget_name}}}
+      </h2>
+    </header>
+  {{/is_dashboard}}
+  {{/if_equals}}
+
+  {{#if_equals widget_id "info"}}
+  {{^is_dashboard}}
+    <header class="header">
+      <h2>
+        <i class="{{widget_icon}}"></i>
+        {{{widget_name}}}
+      </h2>
+    </header>
+  {{/is_dashboard}}
+  {{/if_equals}}
+
+  <section class="content">
+    {{{widget_initial_content}}}
+
+    {{#add_to_current_scope showSpinner=true}}
+      <spinner
+        size="large"
+        extra-css-class="initial-spinner"
+        toggle="showSpinner"
+        ></spinner>
+    {{/add_to_current_scope}}
+  </section>
+{{!/section}}

@@ -1,0 +1,71 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.flash {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 50%;
+  margin-left: 25%;
+  z-index: zIndex(flash);
+  font-size: 11px;
+
+  .notice {
+    background-color: $messageGreen;
+    p {
+      color: $green;
+      font-weight: bold;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      line-height: 30px;
+      i {
+        margin-top: 6px;
+      }
+    }
+  }
+  .message {
+    text-align: center;
+    margin: 0 auto 15px;
+    p {
+      margin: 8px;
+      font-weight: bold;
+    }
+  }
+  .error {
+    background-color: $messageRed;
+  }
+  .warning {
+    background-color: $messageYellow;
+  }
+  .alert {
+    .close {
+      margin: 0;
+    }
+  }
+  .modal-header & {
+    z-index: zIndex(modal-header-flash);
+  }
+}
+
+.alert-progress {
+  color: $darkText;
+  background: url('/static/images/ajax-loader.gif') no-repeat 10px 9px;
+  background-color: $messagePurple;
+  padding-left: 35px;
+}
+
+.alert {
+  @include border-radius(2px);
+  border: 1px solid;
+  margin-bottom: 20px;
+  p {
+    margin-bottom: 0;
+  }
+  &.warning {
+    background-color: $warningBgnd;
+    color: $red;
+  }
+}

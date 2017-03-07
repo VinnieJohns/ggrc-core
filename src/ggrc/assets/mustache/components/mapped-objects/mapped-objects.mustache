@@ -1,0 +1,10 @@
+{{!
+    Copyright (C) 2017 Google Inc., authors, and contributors
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+<object-list {items}="showItems" {^selected-item}="selectedItem" {is-loading}="isLoading">
+    <content/>
+</object-list>
+{{#if requireLimit}}
+    <button class="btn btn-small btn-link" ($click)="toggleShowAll()">{{showAllButtonText}}</button>
+{{/if}}

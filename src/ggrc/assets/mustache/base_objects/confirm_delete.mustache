@@ -1,0 +1,31 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="centered">
+<p>
+{{#instance}}
+Are you sure you want to delete
+  <span class="user-string">
+    {{#if display_name}}
+      {{display_name}}?
+    {{else}}
+      this {{type_to_readable instance.type}}?
+    {{/if}}
+  </span>
+  {{#if_instance_of instance 'CustomAttributeDefinition'}}
+  <div>
+    <h2>Warning!</h2>
+    <p>This will also remove <strong>ALL</strong> values for this attribute.</p>
+    <p>The action is not reversible.</p>
+  </div>
+  {{/if_instance_of}}
+  {{#if delete_counts.loading}}
+	<br/><span {{attach_spinner '{ "radius": 4, "length": 4, "width": 2 }' 'display:inline-block;' }}></span>
+  {{else}}
+	<br/>{{delete_counts.counts}}
+  {{/if}}
+{{/instance}}
+</p>
+</div>

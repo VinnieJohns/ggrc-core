@@ -1,20 +1,48 @@
-
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By: vraj@reciprocitylabs.com
-# Maintained By: vraj@reciprocitylabs.com
 
 from ggrc import db
-from .mixins import Identifiable, created_at_args
+from ggrc.models.mixins import Base
 
-class Event(Identifiable, db.Model):
+
+class Event(Base, db.Model):
   __tablename__ = 'events'
 
-  person_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable = False)
-  created_at = db.Column(db.DateTime, nullable = False, **created_at_args())
-  http_method = db.Column(db.String, nullable = False)
-  resource_id = db.Column(db.Integer, nullable = False)
-  resource_type = db.Column(db.String, nullable = False)
+  action = db.Column(
+      db.Enum(u'POST', u'PUT', u'DELETE', u'BULK', u'GET'),
+      nullable=False,
+  )
+  resource_id = db.Column(db.Integer)
+  resource_type = db.Column(db.String)
 
-  events = db.relationship('Revision', backref='event', lazy='subquery') # We always need the revisions
-  person = db.relationship('Person')
+  revisions = db.relationship(
+      'Revision',
+      backref='event',
+      cascade='all, delete-orphan',
+  )
+
+  _publish_attrs = [
+      'action',
+      'resource_id',
+      'resource_type',
+      'revisions',
+  ]
+
+  _include_links = [
+      'revisions',
+  ]
+
+  @staticmethod
+  def _extra_table_args(class_):
+    return (
+        db.Index('events_modified_by', 'modified_by_id'),
+    )
+
+  @classmethod
+  def eager_query(cls):
+    from sqlalchemy import orm
+
+    query = super(Event, cls).eager_query()
+    return query.options(
+        orm.subqueryload('revisions').undefer_group('Revision_complete'),
+    )

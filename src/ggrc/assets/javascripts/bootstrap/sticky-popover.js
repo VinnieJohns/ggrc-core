@@ -1,9 +1,7 @@
-/*
- * Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
- * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
- * Created By:
- * Maintained By:
- */
+/*!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
 
 !function ($) {
 
@@ -59,6 +57,17 @@
           this.tip().css({opacity : window.getComputedStyle(this.tip()[0]).opacity});
         }
 
+        if (this.$element.children('.popover-data-title').length > 0) {
+          this.$element.attr(
+              'data-original-title',
+              this.$element.children('.popover-data-title').html());
+        }
+
+        if (this.$element.children('.popover-data-content').length > 0) {
+          this.$element.attr(
+              'data-content',
+              this.$element.children('.popover-data-content').html());
+        }
 
         this.displayState = 'show';
         this.trigger_load();

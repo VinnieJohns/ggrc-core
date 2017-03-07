@@ -1,0 +1,251 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<form action="javascript://">
+  {{> '/static/mustache/base_objects/form_restore.mustache'}}
+
+  <div class="row-fluid">
+    <div class="span8">
+      <label>
+        Summary
+        <span class="required">*</span>
+        <i class="fa fa-question-circle" rel="tooltip" title="Give new {{model.model_singular}} a summary that is easy to search for and indicates the main goals of this {{model.model_singular}}"></i>
+      </label>
+      <input class="input-block-level required" id="task-title" placeholder="Enter Title" name="title" type="text" value="{{instance.title}}" tabindex="1" autofocus>
+    </div>
+    <div class="span4">
+      {{#using contact=instance.contact model_singular=model.model_singular}}
+      <label>
+        Assignee
+        <span class="required">*</span>
+        <i class="fa fa-question-circle" rel="tooltip" title="This is the default assignee for this task."></i>
+        <a href="javascript://" class="field-hide" tabindex="-1">hide</a>
+      </label>
+      <input tabindex="2" class="input-block-level" name="contact.email" data-lookup="Person" placeholder="Enter email address" type="text" value="{{firstexist contact.email ''}}" />
+      {{/using}}
+      <br>
+    </div>
+  </div>
+  <div class="row-fluid">
+    <div class="span8 hidable">
+      <label>
+        Task Type
+        <a href="javascript://" class="field-hide" tabindex="-1">hide</a>
+      </label>
+      <select name="task_type" tabindex="2">
+        <option value="text" {{#if_equals instance.task_type 'text'}}selected="selected"{{/if_equals}}>Rich text</option>
+        <option value="menu" {{#if_equals instance.task_type 'menu'}}selected="selected"{{/if_equals}}>Dropdown</option>
+        <option value="checkbox" {{#if_equals instance.task_type 'checkbox'}}selected="selected"{{/if_equals}}>Checkbox</option>
+      </select>
+      {{^if_in instance.task_type 'menu,checkbox'}}
+      <label>
+        Task Description
+        <i class="fa fa-question-circle" rel="tooltip" title="Provide more details on the purpose of this {{model.model_singular}} and provide context for how and when this {{model.model_singular}} might be used."></i>
+      </label>
+      <div class="wysiwyg-area">
+        <textarea id="tgt_response_options" class="span12 double wysihtml5" name="description" placeholder="Enter Description" tabindex="3">{{instance.description}}</textarea>
+      </div>
+      {{/if_in}}
+      {{#if_equals instance.task_type 'menu'}}
+      <label>
+        Dropdown Options (Comma Separated)
+        <span class="required">*</span>
+        <i class="fa fa-question-circle" rel="tooltip" title="Choose which response should be applied to this {{model.model_singular}}."></i>
+      </label>
+        <textarea-array array="instance.response_options" placeholder="Enter Values" class-name="span12 double"></textarea-array>
+      {{/if_equals}}
+      {{#if_equals instance.task_type 'checkbox'}}
+      <label>
+        Checkbox Options (Comma Separated)
+        <span class="required">*</span>
+        <i class="fa fa-question-circle" rel="tooltip" title="Choose which response should be applied to this {{model.model_singular}}."></i>
+      </label>
+        <textarea-array array="instance.response_options" placeholder="Enter Values" class-name="span12 double"></textarea-array>
+      {{/if_equals}}
+    </div>
+
+    <div class="span4" id="frequency-div">
+      {{#using task_group=instance.task_group}}
+      {{#using workflow=task_group.workflow}}
+      {{#switch workflow.frequency}}
+      {{#case "one_time"}}
+      <div id="one-time" class="frequency-wrap" style="display:block">
+        <label>
+          Frequency: One time
+          <i class="fa fa-question-circle" rel="tooltip" title="Choose start and end dates"></i>
+        </label>
+        <label class="smaller">
+           <datepicker date="instance.start_date"
+                       required="{{true}}"
+                       label="Start Date"></datepicker>
+        </label>
+        <label class="smaller">
+          <datepicker set-min-date="instance.start_date"
+                      date="instance.end_date"
+                      required="{{true}}"
+                      label="Due Date"></datepicker>
+        </label>
+      </div>
+      {{/case}}
+      {{#case "weekly"}}
+      <div id="weekly" class="frequency-wrap" style="display:block">
+        <label>
+          Frequency: Weekly
+          <i class="fa fa-question-circle" rel="tooltip" title="Choose start/end days of the week"></i>
+        </label>
+        <label class="smaller">
+          <span class="start-text">
+            Starts every
+            <span class="required">*</span>
+          </span>
+          <select name="relative_start_day" class="input-medium" can-value="instance.relative_start_day" tabindex="4">
+            {{#iterate 1 "Monday" 2 "Tuesday" 3 "Wednesday" 4 "Thursday" 5 "Friday" step=2}}
+            <option value="{{iterator_0}}">{{iterator_1}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+        <label class="smaller">
+          <span class="start-text">
+            Due every
+            <span class="required">*</span>
+          </span>
+          <select name="relative_end_day" class="input-medium" can-value="instance.relative_end_day" tabindex="5">
+            {{#iterate 1 "Monday" 2 "Tuesday" 3 "Wednesday" 4 "Thursday" 5 "Friday" step=2}}
+            <option value="{{iterator_0}}">{{iterator_1}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+      </div>
+      {{/case}}
+      {{#case "monthly"}}
+      <div id="monthly" class="frequency-wrap" style="display:block">
+        <label>
+          Frequency: Each month
+          <i class="fa fa-question-circle" rel="tooltip" title="If date is Saturday, Sunday or holiday, Start/End date will be triggered on the first upcoming business day"></i>
+        </label>
+        <label class="smaller">
+          <span class="start-text">
+            Starts every
+            <span class="required">*</span>
+          </span>
+          <select name="relative_start_day" class="input-small" can-value="instance.relative_start_day" tabindex="4">
+            {{#iterate 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31}}
+            <option value="{{iterator}}">{{iterator}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+        <label class="smaller">
+          <span class="start-text">
+            Due every
+            <span class="required">*</span>
+          </span>
+          <select name="relative_end_day" class="input-small" can-value="instance.relative_end_day" tabindex="5">
+            {{#iterate 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31}}
+            <option value="{{iterator}}">{{iterator}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+      </div>
+      {{/case}}
+      {{#case "quarterly"}}
+      <div id="quarterly" class="frequency-wrap" style="display:block">
+        <label>
+          Frequency: Every quarter
+          <i class="fa fa-question-circle" rel="tooltip" title="If date is Saturday, Sunday or holiday, Start/End date will be triggered on the first upcoming business day"></i>
+        </label>
+        <label class="smaller">
+          <span class="start-text extrasmall">
+            Starts
+            <span class="required">*</span>
+          </span>
+          <select name="relative_start_month" class="input-medium" can-value="instance.relative_start_month" tabindex="4">
+            {{#iterate 1 "Jan, Apr, Jul, Oct" 2 "Feb, May, Aug, Nov" 3 "Mar, Jun, Sep, Dec" step=2}}
+            <option value="{{iterator_0}}">{{iterator_1}}</option>
+            {{/iterate}}
+          </select>
+          <select name="relative_start_day" class="input-mini" can-value="instance.relative_start_day" tabindex="5">
+            {{#iterate 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31}}
+            <option value="{{iterator}}">{{iterator}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+        <label class="smaller">
+          <span class="start-text extrasmall">
+            Due
+            <span class="required">*</span>
+          </span>
+          <select name="relative_end_month" class="input-medium" can-value="instance.relative_end_month" tabindex="6">
+            {{#iterate 1 "Jan, Apr, Jul, Oct" 2 "Feb, May, Aug, Nov" 3 "Mar, Jun, Sep, Dec" step=2}}
+            <option value="{{iterator_0}}">{{iterator_1}}</option>
+            {{/iterate}}
+          </select>
+          <select name="relative_end_day" class="input-mini" can-value="instance.relative_end_day" tabindex="7">
+            {{#iterate 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31}}
+            <option value="{{iterator}}">{{iterator}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+      </div>
+      {{/case}}
+      {{#case "annually"}}
+      <div id="annually" class="frequency-wrap" style="display:block">
+        <label>
+          Frequency: Each year
+          <i class="fa fa-question-circle" rel="tooltip" title="If date is Saturday, Sunday or holiday, Start/End date will be triggered on the first upcoming business day"></i>
+        </label>
+        <label class="smaller">
+          <span class="start-text">
+            Starts every
+            <span class="required">*</span>
+          </span>
+          <select name="relative_start_month" class="input-small" can-value="instance.relative_start_month" tabindex="4">
+            {{#iterate 1 "January" 2 "February" 3 "March" 4 "April" 5 "May" 6 "June" 7 "July" 8 "August" 9 "September" 10 "October" 11 "November" 12 "December" step=2}}
+              <option value="{{iterator_0}}">{{iterator_1}}</option>
+            {{/iterate}}
+          </select>
+          <select name="relative_start_day" class="input-mini" can-value="instance.relative_start_day" tabindex="5">
+            {{#iterate 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31}}
+            <option value="{{iterator}}">{{iterator}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+        <label class="smaller">
+          <span class="start-text">
+            Due every
+            <span class="required">*</span>
+          </span>
+          <select name="relative_end_month" class="input-small" can-value="instance.relative_end_month" tabindex="6">
+            {{#iterate 1 "January" 2 "February" 3 "March" 4 "April" 5 "May" 6 "June" 7 "July" 8 "August" 9 "September" 10 "October" 11 "November" 12 "December" step=2}}
+              <option value="{{iterator_0}}">{{iterator_1}}</option>
+            {{/iterate}}
+          </select>
+          <select name="relative_end_day" class="input-mini" can-value="instance.relative_end_day" tabindex="7">
+            {{#iterate 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31}}
+            <option value="{{iterator}}">{{iterator}}</option>
+            {{/iterate}}
+          </select>
+        </label>
+      </div>
+      {{/case}}
+      {{/switch}}
+      {{/using}}
+      {{/using}}
+    </div>
+    <input type="hidden" name="task_group" model="TaskGroup" value="{{firstnonempty object_params.task_group instance.task_group.id}}" />
+    <input type="hidden" name="context" model="Context" value="{{firstnonempty object_params.context instance.context.id}}" />
+    <input type="hidden" name="sort_index" value="{{firstnonempty object_params.sort_index instance.sort_index}}" />
+  </div>
+  <div class="row-fluid">
+    <div data-id="code_hidden" class="span4 hidable">
+      <label>
+        Code
+        <i class="fa fa-question-circle" rel="tooltip" title="The GGRC application will automatically provide codes for new objects.  If you would like to override this feature you may manually enter a code of your choosing.  You should have a specific reason for doing this."></i>
+        <a data-id="hide_code_lk" href="javascript://" class="field-hide" tabindex="-1">hide</a>
+      </label>
+      <input data-id="code_txtbx" tabindex="8" class="input-block-level" name="slug" placeholder="TASK-XXX" type="text" value="{{instance.slug}}">
+    </div>
+  </div>
+  {{{render_hooks 'TaskGroupTask.modal_tier1'}}}
+</form>

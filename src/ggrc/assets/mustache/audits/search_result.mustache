@@ -1,0 +1,24 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{#list}}
+<li class="{{class.category}}" data-model="true" {{data 'model'}}>
+  {{#using program=program}}
+  <a href="{{viewLink}}" class="show-extended">
+      <div>
+        <span class="lhs-item lhs-item-medium">
+          {{title}}
+        </span>
+      </div>
+  </a>
+  {{/using}}
+</li>
+{{/list}}
+
+{{#list.is_loading}}
+  <li class="spinny">
+    <spinner toggle="list.is_loading"></spinner>
+  </li>
+{{/list.is_loading}}

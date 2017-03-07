@@ -1,0 +1,41 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+$zindex: (
+  'tree-header': 1,
+  'header-content': 100,
+  'footer': 1,
+  'tree-filter': 2,
+  'info-page-dropdown': 10,
+  'sticky': 50,
+  'pin-content': 50,
+  'bar-v': 100,
+  'tree-spinner': 100,
+  'file-controls': 1500,
+  'ui-autocomplete-active-list': 1500,
+  'extended-content': 1500,
+  'lhs': 2050,
+  'event-more': 2050,
+  'tooltip': 3100,
+  'pane-header': 3100,
+  'info-pin-buttons': 3101,
+  'extended-info': 3200,
+  'ui-autocomplete': 3200,
+  'simple-model-overlay': 3299,
+  'person-tooltip': 9000,
+  'flash': 9000,
+  'dropdown-menu': 9999,
+  'details-wrap': 9999,
+  'info-pane-utility': 9999,
+  'modal-header-flash': 9999,
+  'lhn-pin': 9999
+);
+
+@function zIndex($name) {
+  @if not map-has-key($zindex, $name) {
+    @warn "No value found for '#{$name}' in '$zindex' map";
+  }
+  @return map-get($zindex, $name);
+}

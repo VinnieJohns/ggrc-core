@@ -1,0 +1,57 @@
+/* Read-More Component CSS spec */
+
+read-more {
+  transition: height 0.1s ease;
+  position: relative;
+  display: block;
+
+  .read-more__body {
+    overflow: hidden;
+    transition: display 0.1s ease, height 0.1s ease, max-height 0.3s ease;
+    padding: 0;
+    box-sizing: border-box;
+
+    .read-more__body-content {
+      line-height: 18px;
+      position: relative;
+
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    }
+  }
+
+  .read-more__controls {
+    padding: 0 8px;
+    height: 22px;
+    line-height: 22px;
+    margin: 0;
+    text-align: right;
+    position: relative;
+  }
+
+  .read-more__btn {
+    padding: 2px 0;
+    box-sizing: border-box;
+    text-align: right;
+    min-width: 78px;
+    cursor: pointer;
+    line-height: 18px;
+    display: inline-block;
+    transition: display 0.3s ease;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
+}
+
+read-more-text-overflow {
+  box-sizing: border-box;
+  width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  line-height: 18px;
+  font-size: 13px;
+}

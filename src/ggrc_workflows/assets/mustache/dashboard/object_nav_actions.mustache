@@ -1,0 +1,34 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+
+{{#is_allowed 'update' instance context='for'}}
+  <li class="inner-nav-button">
+    <workflow-activate workflow="instance" deferredData="can_activate">
+      <spinner toggle="waiting"></spinner>
+
+      {{#if_equals instance.status "Draft"}}
+        {{^if waiting}}
+          {{^can_activate}}
+            <p class="tiny-help-text">You need to setup task group(s) before activating workflow</p>
+          {{/can_activate}}
+          <button type="submit" href="#workflowActivate" class="btn btn-info btn-small" {{^can_activate}}disabled="disabled"{{/can_activate}}>
+            Activate Workflow
+          </button>
+        {{/waiting}}
+      {{else}}
+        {{^if_equals instance.status 'Inactive'}}
+        {{^if waiting}}
+          {{^can_activate}}
+            {{^if_equals instance.kind "Backlog"}}
+            <p class="alert tiny-help-text" style="margin-bottom:0px;"><strong>Note:</strong> At least one of the task groups is missing either a task or an object.</p>
+            {{/if_equals}}
+          {{/can_activate}}
+        {{/if}}
+        {{/if_equals}}
+      {{/if_equals}}
+    </workflow-activate>
+  </li>
+{{/is_allowed}}

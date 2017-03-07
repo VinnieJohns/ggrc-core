@@ -1,0 +1,13 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.pagination .status {
+  float: left;
+  padding: 0 14px;
+  line-height: ($baseLineHeight * 2) - 2;
+  text-decoration: none;
+  border: 1px solid #ddd;
+  border-left-width: 0;
+}

@@ -1,300 +1,84 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
 
-// widgets styles
 .widget {
-  margin-bottom: 20px;
-  overflow-y:hidden;
-  background:$white;
-  border:1px solid $widgetBorder;
-  @include transition(box-shadow 0.2s,border-color 0.2s);
-  ul.tree-structure {
-    li {
-      &:hover {
-        border-bottom: 1px solid $gray;
-      }
-      &:last-child {
-        &:hover {
-          border-bottom: none;
-        }
-      }
-    }
-  }
-  &.governance {
-    .header {
-      background: $governance;
-      .widget-action {
-        background: darken($governance, 7%);
-      }
-    }
-  }
-  &.programs {
-    .header {
-      background: $programs;
-      .widget-action {
-        background: darken($programs, 7%);
-      }
-    }
-  }
-  &.risk {
-    .header {
-      background: $risk;
-      .widget-action {
-        background: darken($risk, 7%);
-      }
-    }
-  }
-  &.business {
-    .header {
-      background: $business;
-      .widget-action {
-        background: darken($business, 7%);
-      }
-    }
-  }
-  &.widget-tabs {
-    &.widget-tabs-horizontal {
-      .content {
-        overflow-y: auto;
-      }
-      .tab-content {
-        padding: 9px;
-      }
-      .nav-tabs {
-        padding-left: 10px;
-        margin-right: 0;
-        li {
-          margin-bottom: 0;
-          a {
-            min-width: auto;
-            border-bottom: none;
-            padding-left: 10px;
-            padding-right: 10px;
-            margin-right: 0;
-            color: $darkText;
-            span {
-              color: $text;
-              font-size: $f-small;
-            }
-            i {
-              margin-right: 4px;
-            }
-          }
-          &.active {
-            a {
-              color: $widgetTitle;
-              span {
-                color: $widgetTitle;
-                font-size:$f-small;
-              }
-            }
-          }
-          &.text-compliance,
-          &.text-system,
-          &.text-process,
-          &.text-businessprocess,
-          &.text-control {
-            a {
-              color:$compliance;  
-            }
-          }
-          &.text-risk,
-          &.text-attribute {
-            a {
-              color:$risk;  
-            }
-          }
-          &.text-business,
-          &.text-dataasset,
-          &.text-project,
-          &.text-facility,
-          &.text-market,
-          &.text-product,
-          &.text-orggroup {
-            a {
-              color:$business;  
-            }
-          }
-          &.text-governance,
-          &.text-program,
-          &.text-section,
-          &.text-clause,
-          &.text-policy,
-          &.text-directive,
-          &.text-contract,
-          &.text-regulation {
-            a {
-              color:$governance;  
-            }
-          }
-        }
-      }
-    }
-    .content {
-      padding: 0;
-      overflow-y: visible;
-    }
-    .tabs-left {
-      padding-bottom: 26px;
-    }
-    .tab-content {
-      padding-top: 10px;
-    }
-    .nav-tabs {
-      background: $lightGray;
-      margin-right: 7px;
-      padding: 9px 0 0 2px;
-      border: none;
-      margin-bottom: 0;
-      margin-left: 0;
-      white-space: nowrap;
-      li {
-        a {
-          color: $text;
-          @include transition(color 0.3s ease);
-          min-width: 105px;
-          .item-count {
-            font-size:$f-small;
-          }
-          i {
-            @include opacity(0.3);
-            margin-right: 7px;
-            @include transition(opacity 0.3s ease);
-          }
-          &:hover {
-            color: $black;
-            i {
-              @include opacity(1);
-            }
-          }
-        }
-        &.active {
-          a {
-            color: $infoWidgetHeader;
-            i {
-              @include opacity(1);
-            }
-          }
-        }
-      }
-    }
-  }
-  .inline-info {
-    color:$text;
-    i {
-      @include opacity(0.3);
-      margin-top:7px;
-    }
-    &.blank {
-      color:$disabled;
-      i {
-        @include opacity(0.1);
-      }
-    }
-  }
-  
   .header {
-    background:$defaultWidget;
-    @include transition(background-color 0.2s);
-    color:$white;
+    @extend %row-fluid-fix;
     height: 30px;
-    padding-left: 16px;
-    &:hover {
-      background-image: image-url("grcicons/icons.png");
-      background-repeat: no-repeat;
-      @include background-size(296px 344px);
-      background-position: -270px -169px;
-      cursor: move;
-    }
-    .widget-action {
-      height: 30px;
-      width: 30px;
-      background: darken($defaultWidget, 7%);
-      @include box-shadow(inset 0 0 3px rgba(0, 0, 0, 0.5));
-      i {
-        @include opacity(0.5);
-        @include transition(opacity 0.3s ease);
-      }
-      a {
-        display: block;
-        width: 20px;
-        height: 16px;
-        padding: 7px 5px;
-        &:hover {
-          i {
-            @include opacity(1);
-          }
-        }
-      }
-      &.widget-action-help {
-        @include box-shadow(none);
-        background: transparent;
-      }
-      &.widget-showhide {
-        @include transition(background 0.3s ease);
-        a {
-          width: 30px;
-          height: 30px;
-          padding: 0;
-          @include opacity(0.5);
-          @include transition(opacity 0.3s ease);
-          &:hover {
-            @include opacity(1);
-          }
-        }
-        &:hover {
-          @include box-shadow(none);
-          background: transparent;
-        }
-      }
-    }
+    background: none;
     h2 {
-      font-weight:normal;
-      line-height: 28px;
-      color: $white;
-      margin-bottom:0;
-      @include oneline();
+      font-size: 18px;
+      line-height: 27px;
+      color: $black;
+      margin-bottom: 0;
+      font-weight: normal;
+      @extend %oneline;
+      font-family: $fontTitle;
       span {
         font-size: $f-small;
         font-weight:normal;
       }
-      span.subtitle {
-        font-size: $f-regular;
-        font-style: italic;
-      }
       i {
-        margin-top: 7px;
-        margin-right: 7px;
+        display: none;
       }
     }
-    .btn-mini {
-      margin-left:6px;
-      padding-left:2px;
-      padding-right:2px;
-      i {
-        @include opacity(0.4);
-      }
-      &:hover {
-        border-color:$white;
+    &.widget-nav {
+      height: 40px;
+      background: none;
+      ul {
+        @extend %reset-list;
+        @extend %clearfix;
+        li {
+          float: left;
+          font-size: 18px;
+          line-height: 30px;
+          color: $black;
+          font-family: $fontTitle;
+        }
+        a {
+          @include transition(background 0.2s ease, color 0.2s ease);
+          padding: 5px 10px;
+          display: block;
+          line-height: 30px;
+          color: $black;
+          &:hover {
+            background: $tabHoverBgnd;
+            color: $white;
+            text-decoration: none;
+            i {
+              @include opacity(1);
+            }
+          }
+        }
         i {
-          @include opacity(1);
+          @include opacity(0.55);
+          margin-top: 6px;
+        }
+        li.active {
+          a {
+            color: $black;
+            background-color: $white;
+            i {
+              @include opacity(1);
+            }
+            &:hover {
+              background: $tabHoverBgnd;
+              color: $white;
+            }
+          }
         }
       }
-    }
-    @include row-fluid-fix();
-  }
-  .info {
-    padding:0 6px;
-    color:$text;
-    .rtf {
-      margin:0 20% 10px 0;
     }
   }
   .filter {
     padding:3px 2px;
     background: $filterBgnd;
     a.secondary-link {
+      @include opacity(0.5);
       margin-top:4px;
       margin-right:2px;
-      @include opacity(0.5);
       &:hover {
         @include opacity(1);
       }
@@ -305,7 +89,7 @@
       padding-left:12px;
       .btn {
         padding-right:6px;
-        padding-left:6px;      
+        padding-left:6px;
       }
     }
     .form-inline {
@@ -314,10 +98,6 @@
     input {
       margin-bottom: 0;
       border: 1px solid $popOverBorder;
-      background-image: image-url("grcicons/icons.png");
-      background-repeat: no-repeat;
-      @include background-size(296px 344px);
-      background-position:-259px -195px;
       padding-left: 40px;
     }
     .btn {
@@ -338,53 +118,18 @@
       }
     }
     input[type="text"] {
-      @include input-block-level();
-    }
-  }
-  .content {
-    padding:6px;
-    border-top: none;
-    background:$white;
-    height:85%; //needs to be removed
-    overflow-y:auto;
-    > .tabs-left {
-      height:100%;
-      overflow-y:hidden;
-      > .tab-content {
-        height:100%;
-      }
-      > .nav-tabs {
-        height:100%;
-        overflow-y: auto;
-        overflow-x: hidden;
-      }
-    }
-  }
-  .footer {
-    color:$text;
-    padding:6px;
-    height: auto;
-    @include default-border-top();
-    p {
-      font-weight:normal;
-      margin: 0;
-      color:$text;
-      line-height: 20px;
-      &.footer-right {
-        text-align: right;
-      }
-      &.footer-left {
-        text-align: left;
-      }
+      @extend %input-block-level;
     }
   }
   .items {
-    @include reset-list();
+    @extend %reset-list;
     h3 {
       font-weight:normal;
       font-size:$f-regular;
     }
     li.main {
+      @extend %default-border-bottom;
+      padding:10px 0;
       h4 {
         font-size: $f-regular;
         color:$text;
@@ -393,8 +138,6 @@
         color: $headerTitle;
         text-decoration: none;
       }
-      padding:10px 0;
-      @include default-border-bottom();
       .progress {
         margin: 0;
       }
@@ -407,297 +150,377 @@
       }
     }
   }
-  .action-items {
-    margin-bottom: 5px;
-    text-align: right;
-    a {
-      @include transition(color 0.2s ease-in-out);
-      i {
-        @include opacity(0.4);
-        @include transition(opacity 0.2s ease-in-out);
-      }
-      &:hover {
-        i {
-          @include opacity(1);
-        }
-      }
-      &.btn-mini {
-        padding: 2px;
-      }
-    }
-  }
-  .tabbable {
-    position: relative;
-    .action-items {
-      margin: 4px 6px 5px 0;
-      &.action-below {
-        position: static;
-        margin-bottom: 10px;
-        text-align: right;
-      }
-    }
-  }
-  &:hover {
-    @include box-shadow(0 0 12px $gray);
-  }
-  .related-button {
-    li {
-      a {
-        color: $black;
-        padding: 5px 9px;
-      }
-      &.active {
-        a {
-          color: $white;
-        }
-      }
-    }
-  }
-  .info-list {
-    @include reset-list();
-    margin-bottom: 20px;
-    li {
-      padding: 4px 0 2px 7px;
-      &:last-child {
-        border-bottom: none;
-      }
-      label {
-        font-weight: normal;
-        text-transform:uppercase;
-        color: $darkGray;
-      }
-      .rtf {
-        border:1px solid darken($lightGray,5%);
-        @include border-radius();
-        padding:6px 16px 6px 6px;
-        margin-left: 0;
-        font-size: $f-small !important;
-        ul,
-        ol {
-          margin-top:0;
-          padding-top:0;
-          li {
-            border: none;
-            padding: 0 0 6px 0;
-          }
-        }
-        p.no-data {
-          margin-bottom:0;
-        }
-      }
-      &.float-element {
-        @include clearfix();
-        label {
-          float: left;
-          width: 35%;
-          margin: 0 10px 0 0;
-          color:$text;
-        }
-        span {
-          float: left;
-          width: 60%;
-        }
-      }
-    }
-  }
-  .risk-content {
+  .small-info {
     h3 {
-      font-weight: normal;
-      padding-bottom: 5px;
-      margin-top:10px;
-      color: $headerTitle;
-      @include default-border-bottom();
+      font-weight:normal;
+      padding-bottom:12px;
     }
-    h4 {
-      //@include default-border-top();
-      padding-top: 10px;
-      font-weight:bold;
-      margin-bottom: 4px;
-      color: $headerTitle;
+    h6 {
+      margin-bottom:0;
+      padding-bottom:0;
+      text-align:left;
+      margin-left:0;
+      margin-right:0;
+      padding-left:0;
+      padding-right:0;
+      border:none;
+      background:none;
+      line-height: 18px;
     }
-    .rtf {
-      color: $text;
-      font-size:$f-regular;
-    }
-    .risk-level {
-      float: right;
-      font-size: $f-subTitle;
-      border:1px solid $lightGray;
-      @include border-radius();
-      padding:0 6px;
-      color: $red;
-      cursor:pointer;
-      margin-top: 10px;
-      &.risk-level-1 {
-        color:$white;
-        background:$green;
-        border-color:darken($green,5%);
-
-      }
-      &.risk-level-2,
-      &.risk-level-3 {
-         color:$white;
-         background:$warning;
-         border-color:darken($warning,5%);
-
-      }
-      &.risk-level-4,
-      &.risk-level-5 {
-        color:$white;
-        background:$error;
-        border-color:darken($error,5%);
-      }
-
-    }
-  }
-  ul.single-row-tabs {
-    li {
-      float: none;
-      clear: both;
-      padding: 0;
-      margin: 0;
-      a {
-        padding: 0;
-        border: none;
-        &:hover {
-          background: none;
-          @include border-radius(0);
-          border: none;
-        }
+    i {
+      @include opacity(.25);
+      @include transition(opacity 0.2s ease);
+      cursor: pointer;
+      &:hover {
+        @include opacity(1);
       }
     }
-  }
-  .inner-element {
-    display: block;
-    @include oneline();
+    p {
+      line-height:18px;
+      i {
+        margin-top: 1px;
+      }
+    }
   }
   .import-help {
     display: inline-block;
     margin: 0 0 0 10px;
   }
+  .info-widget-footer {
+    padding-top: 3px;
+    padding-left: 10px;
+    a {
+      color: $textGray;
+    }
+  }
 }
 
-.widget-filters {
-  @include background-image(linear-gradient(top, #eee, $white));
-  @include border-radius(4px 0 4px 4px);
-  border:1px solid $widgetHeader;
+.nav.nav-tabs {
+  margin-bottom:0;
+}
+
+// Profile Info Widget
+.profile-info {
+  padding-top: 12px;
+  padding-bottom: 9px;
+  ul {
+    @extend %reset-list;
+    li {
+      padding-bottom: 6px;
+    }
+    .email,
+    .company,
+    .role {
+      font-size: 13px;
+    }
+    .role {
+      color: $green;
+      font-weight:bold;
+    }
+    .name {
+      font-size: 14px;
+    }
+  }
+  .profile-contact {
+    margin-top: 5px;
+    margin-bottom: 10px;
+    ul {
+      @extend %clearfix;
+      li {
+        padding-bottom: 0;
+        float: left;
+        margin-right: 10px;
+        a {
+          line-height: 23px;
+          display: block;
+          &.btn {
+            font-size: 12px;
+            line-height: 17px;
+            color: $darkGray;
+            &:hover {
+              color: $black;
+            }
+            i {
+              margin-top: 1px;
+            }
+          }
+          i {
+            @include opacity(0.3);
+            @include transition(opacity 0.2s ease-in-out);
+            margin-top: 4px;
+          }
+          &:hover {
+            i {
+              @include opacity(1);
+            }
+          }
+        }
+        &.circle-holder {
+          position: relative;
+        }
+        .square-popover {
+          padding: 7px 3px 6px 3px;
+          border: 1px solid $midGray;
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          display: none;
+          background: $white;
+          ul {
+            li {
+              float: none;
+              clear: both;
+              margin: 0 0 3px 0;
+              padding-left: 7px;
+              padding-right: 7px;
+              width: 190px;
+              font-size: 11px;
+              font-weight: bold;
+              color: $black;
+              label {
+                font-size: 11px;
+                font-weight: bold;
+                color: $black;
+                cursor: pointer;
+              }
+              input {
+                margin-top: 0;
+              }
+              span {
+                float: right;
+                text-align: right;
+              }
+              &.create {
+                border-top: 1px solid $sidenavBorder;
+                padding-top: 5px;
+                margin: 0;
+                a {
+                  line-height: 16px;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.profile-photo {
+  padding-top: 10px;
+  text-align: right;
+  img {
+    @include border-radius($default-border-radius);
+  }
+}
+
+// Custom popover content
+.custom-popover-content {
+  display: none;
+}
+
+.task-title {
+  width: 50%;
+}
+
+.task-status {
+  width: 40%;
+  text-align: right;
+}
+
+.preview-container {
+  height: 560px;
+  width: 756px;
+  margin: 10px 10px;
+  overflow: hidden;
+  .preview {
+    transform: scale3d(0.75, 0.75, 1);
+    -webkit-transform: scale3d(0.75, 0.75, 1);
+    -ms-transform: scale3d(0.75, 0.75, 1);
+    -o-transform: scale3d(0.75, 0.75, 1);
+    transform-origin: 0px 0px;
+    -webkit-transform-origin: 0 0;
+    -ms-transform-origin: 0 0;
+    -o-transform-origin: 0 0;
+    height: 560px;
+    width: 756px;
+    position: absolute;
+  }
+  &.person-preview {
+    overflow: visible;
+    height: auto;
+    width: 325px;
+  }
+}
+
+.setup-link {
+  display: inline-block;
+  font-size:11px;
+  font-weight:bold;
+  text-transform:uppercase;
+  margin-bottom: 15px;
+}
+
+// new action bar
+.action-bar {
+  @extend %clearfix;
+  padding-top:5px;
   margin-bottom:10px;
-  padding:6px;
-  form.form-inline {
-    margin-bottom:0;
+  .modal & {
+    padding-top:0;
   }
-  select {
-    width:auto;
+  ul {
+    @extend %reset-list;
+    li {
+      display:inline-block;
+      line-height:24px;
+      margin:0 20px 0 0;
+      a {
+        @extend %action-link;
+        font-size: 11px;
+        line-height: 24px;
+        &.unmap {
+          &:hover {
+            color:$error;
+          }
+        }
+        &.disabled-link {
+          color: $gray;
+          i {
+            @include opacity(0.3);
+          }
+          &:hover {
+            color: $gray;
+            background: $treeListBgnd;
+            cursor: default;
+            i {
+              @include opacity(0.3);
+            }
+          }
+        }
+      }
+    }
+    &.change-links {
+      float:right;
+      li {
+        margin:0 0 0 20px;
+      }
+    }
   }
-  input {
-    width:auto;
-  }
-  .btn-reset {
-    float: right;
-  }
-  label {
-    text-transform:uppercase;
-    color:$text;
-    @include text-shadow(0 1px 1px $white);
-    display: block;
-    &.label-title {
-      margin-right:30px;
-      float: left;
-      padding-bottom: 20px;
+  ul.dropdown-menu {
+    li {
+      display:block;
+      margin:0;
+      a {
+        @include border-radius(0);
+      }
     }
   }
 }
 
-.filter-trigger {
-  position:absolute;
-  bottom:0;
-  right:0;
-  @include border-radius(4px 4px 0 0);
-  &:focus {
-    @include outline-fix();
-  }
-
+.object-approved {
+  color:$green;
+  font-size:12px;
+  font-weight:bold;
+  text-transform:uppercase;
 }
 
-.widget-add-placeholder {
-  background: $popOverHeaderBgnd;
-  border: 1px solid $popOverHeaderBorder;
-  @include border-radius($default-border-radius);
-  padding: 51px 0 49px 0;
-  margin-bottom: 20px;
-  text-align: center;
-  .btn-group {
-    display: inline-block;
+.widget {
+  .tier-2-info {
+    .alert {
+      line-height:18px;
+    }
+  }
+}
+
+.zero-state {
+  background: $lightGray;
+  border-bottom: 1px solid $infoMessageBorder;
+  padding-bottom: 40px;
+  .white-widget & {
+    background: $white;
+    border-top: 1px solid $infoMessageBorder;
+  }
+  h2 {
+    line-height: 36px;
+    font-size: 24px;
+    padding: 40px 40px 0 40px;
+    font-weight: normal;
+    text-align: center;
+    color: $infoMessageText;
+  }
+}
+
+// Table
+.table-wrap {
+  padding-top: 20px;
+  .tree-item-add {
     .btn {
-      color: $black;
-      @include transition(color 0.3s ease);
-      @include box-shadow(none);
-      font-weight: bold;
-      padding: 0;
+    }
+  }
+  .tree-action-list {
+    float: none;
+    clear: both;
+    li {
+      margin: 0;
+    }
+    a {
+      @include transition(color 0.2s ease);
       display: inline-block;
-      padding: 10px;
-      position: relative;
-      @include opacity(0.4);
-      @include transition(opacity 0.3s ease);
-      &:active {
-        @include opacity(1);
-        &:hover {
-          background-image: none;
-          background-color: $btnActive;
-          outline: 0;
-          @include box-shadow(inset 0 2px 4px rgba(0,0,0,.15), 0 1px 2px rgba(0,0,0,.05));
-        }
-      }
+      line-height: 28px;
+      color: $gray;
       i {
-        &.grcicon-carot {
-          margin-top: 1px;
-          display: inline-block;
+        @include opacity(0.4);
+        @include transition(opacity 0.2s ease);
+        margin: 7px 4px 0 0;
+      }
+      &:hover {
+        color: $black;
+        text-decoration: none;
+        i {
+          @include opacity(1);
         }
       }
     }
   }
-  &:hover {
-    @include opacity(1);
-    @include gradient-vertical($white, #e6e6e6);
-    .btn-group .btn {
-      &:hover {
-        @include opacity(1);
-      }
-      color: $blue;
-      text-decoration: none;
-      @include opacity(0.7);
-      @include gradient-vertical($white, #e6e6e6);
-      background-position: 0 0;
-      i {
-        @include opacity(0.7);
+}
+
+.table {
+  tbody {
+    tr:hover {
+      td,
+      th {
+        background: transparent;
       }
     }
-  }
-  .open {
-    .btn {
-      @include opacity(1);
-      background-image: none;
-      background-color: $btnActive;
-      outline: 0;
-      @include box-shadow(inset 0 2px 4px rgba(0,0,0,.15), 0 1px 2px rgba(0,0,0,.05));
-      color: $blue;
-      &:hover {
-        background-image: none;
-        background-color: $btnActive;
-        outline: 0;
-        @include box-shadow(inset 0 2px 4px rgba(0,0,0,.15), 0 1px 2px rgba(0,0,0,.05));
-      }
+    td {
+      vertical-align: middle;
+      padding: 6px 8px;
+      line-height: 24px;
     }
   }
-  .dropdown-menu {
-    left: auto;
-    right: 137px;
-    bottom: -1px;
-    text-align: left;
-    .title {
-      padding: 0 7px 0 7px;
+  .add-item {
+    tr {
+      td {
+        border-bottom: 1px solid $footerBorder;
+      }
+    }
+    a {
       font-weight: bold;
-      line-height: 20px;
     }
+  }
+}
+
+.relevant-filter-group {
+  .add-object {
+    margin-top: 20px;
+    margin-left: 30px;
+  }
+}
+
+.progress-wrap {
+  .title {
+    text-align: right;
+    display: inline-block;
   }
 }

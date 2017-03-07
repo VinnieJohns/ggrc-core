@@ -1,17 +1,23 @@
-
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By:
-# Maintained By:
 
 from ggrc import db
-from .mixins import Slugged
+from ggrc.models.deferred import deferred
+from ggrc.models.mixins import Titled, Slugged
 
-class Help(Slugged, db.Model):
+
+class Help(Titled, Slugged, db.Model):
   __tablename__ = 'helps'
+  _title_uniqueness = False
 
-  content = db.Column(db.Text)
-  
+  content = deferred(db.Column(db.Text), 'Help')
+
+  _fulltext_attrs = [
+      'content',
+  ]
   _publish_attrs = [
       'content',
-      ]
+  ]
+  _sanitize_html = [
+      'content',
+  ]

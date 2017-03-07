@@ -1,16 +1,16 @@
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By: david@reciprocitylabs.com
-# Maintained By: david@reciprocitylabs.com
 
 import datetime
 import iso8601
 from collections import namedtuple
 from sqlalchemy import and_, cast
-from sqlalchemy.types import AbstractType, Boolean, Date, DateTime
+from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.orm import joinedload_all
+from sqlalchemy.types import TypeEngine, Boolean, Date, DateTime, Integer
 from werkzeug.exceptions import BadRequest
 
-AttributeQuery = namedtuple('AttributeQuery', 'filter joinlist')
+AttributeQuery = namedtuple('AttributeQuery', 'filter joinlist options')
 
 class AttributeQueryBuilder(object):
   def __init__(self, model):
@@ -53,16 +53,19 @@ class AttributeQueryBuilder(object):
             'Malformed Date {0} for parameter {1}. '
             'Error message was: {2}'.format(value, arg, e.message)
             )
+    elif attr_type is Integer and value == '':
+      return None
     return value
 
   def check_valid_property(self, attr, attrname):
     if not hasattr(attr, 'type') or \
-        not isinstance(attr.type, AbstractType):
+        not isinstance(attr.type, TypeEngine):
       raise self.bad_query_parameter(attrname)
 
   def process_property_path(self, arg, value):
     joinlist = []
     filters = []
+    options = []
     if arg.endswith('__in'):
       clean_arg = arg[0:-4]
     elif arg.endswith('__null'):
@@ -79,6 +82,8 @@ class AttributeQueryBuilder(object):
           joinlist.append(attr)
         attr = self.get_attr_for_model(segment, current_model)
       self.check_valid_property(attr, segment)
+    elif clean_arg == '__include':
+      pass
     else:
       attr = self.get_attr_for_model(clean_arg, self.model)
       self.check_valid_property(attr, clean_arg)
@@ -87,21 +92,58 @@ class AttributeQueryBuilder(object):
       value = [self.coerce_value_for_query_param(attr, arg, v) for v in value]
       filters.append(attr.in_(value))
     elif arg.endswith('__null'):
-      filters.append(attr == None)
+      if(value in [0, 'false', 'False', 'FALSE', False]):
+        filters.append(attr != None)
+      else:
+        filters.append(attr == None)
+    elif clean_arg == '__include':
+      options.extend(self.process_eager_loading(value))
     else:
       value = self.coerce_value_for_query_param(attr, arg, value)
-      filters.append(attr == cast(value, attr.type))
-    return joinlist, filters
+      if value is not None:
+        filters.append(attr == cast(value, attr.type))
+      else:
+        filters.append(attr == None)
+    return joinlist, filters, options
+
+  def resolve_path_segment(self, segment, model):
+    attr = self.get_attr_for_model(segment, model)
+    if isinstance(attr, AssociationProxy):
+      segment = '.'.join([attr.local_attr.key, attr.remote_attr.key])
+      model = attr.remote_attr.property.mapper.class_
+    elif isinstance(attr, property):
+      model = None
+    else:
+      model = attr.property.mapper.class_
+    return segment, model
+
+  def process_eager_loading(self, value):
+    paths = value.split(',')
+    options = []
+    for path in paths:
+      segments = path.split('.')
+      real_segments = []
+      current_model = self.model
+      for segment in segments:
+        real_segment, current_model = self.resolve_path_segment(
+          segment, current_model)
+        if current_model is not None:
+          real_segments.append(real_segment)
+      realized_path = '.'.join(real_segments)
+      options.append(joinedload_all(realized_path))
+    return options
 
   def collection_filters(self, args):
     """Create filter expressions using ``request.args``"""
     filter = None
     joinlist = []
     filter_expressions = []
+    optionlist = []
     for arg, value in args.items():
       try:
-        joins, filters = self.process_property_path(arg, value)
+        joins, filters, options = self.process_property_path(arg, value)
         joinlist.extend(joins)
+        optionlist.extend(options)
         filter_expressions.extend(filters)
       except BadRequest:
         # FIXME: raise BadRequest when client-side is ready for it
@@ -112,4 +154,4 @@ class AttributeQueryBuilder(object):
       filter = filter_expressions[0]
       for f in filter_expressions[1:]:
         filter = and_(filter, f)
-    return AttributeQuery(filter, joinlist)
+    return AttributeQuery(filter, joinlist, optionlist)

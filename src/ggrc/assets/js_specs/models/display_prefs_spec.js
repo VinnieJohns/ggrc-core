@@ -1,39 +1,34 @@
-/*
- * Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
- * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
- * Created By:
- * Maintained By:
- */
+/*!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
+
 
 describe("display prefs model", function() {
-  
+
   var display_prefs, exp;
-  beforeEach(function() {
-    display_prefs || (display_prefs = new CMS.Models.DisplayPrefs());
+  beforeAll(function() {
+    display_prefs = new CMS.Models.DisplayPrefs();
     exp = CMS.Models.DisplayPrefs.exports;
   });
 
   afterEach(function() {
-    display_prefs.removeAttr(window.location.pathName);
+    display_prefs.removeAttr(window.location.pathname);
+    display_prefs.isNew() || display_prefs.destroy();
   });
 
   describe("#init", function( ){
-
     it("sets autoupdate to true by default", function() {
       expect(display_prefs.autoupdate).toBe(true);
     });
 
   });
 
-  runs(function() {
-    display_prefs.autoupdate = false;
-  })
-
   describe("low level accessors", function() {
     beforeEach(function() {
       display_prefs.attr("foo", "bar");
     });
-    
+
     afterEach(function() {
       display_prefs.removeAttr("foo");
       display_prefs.removeAttr("baz");
@@ -68,9 +63,80 @@ describe("display prefs model", function() {
 
       it("returns undefined when the key is not found", function(){
         expect(display_prefs.getObject("xyzzy")).not.toBeDefined();
-      })
+      });
     });
   });
+
+  describe("top nav", function () {
+    afterEach(function() {
+      display_prefs.resetPagePrefs();
+      //display_prefs.removeAttr(exp.path);
+    });
+
+    describe("hiddenness", function () {
+      it("sets nav hidden", function() {
+        display_prefs.setTopNavHidden("this arg is ignored", true);
+        expect(
+          display_prefs.attr(exp.path).top_nav.is_hidden
+        ).toBe(true);
+      });
+
+      it("gets nav hidden", function () {
+        display_prefs.setTopNavHidden("this arg is ignored", true);
+
+        expect(display_prefs.getTopNavHidden()).toBe(true);
+      });
+
+      it("returns false by default", function () {
+        expect(display_prefs.getTopNavHidden()).toBe(false);
+      });
+    });
+
+    describe("widget list", function () {
+      it("sets widget list", function () {
+        display_prefs.setTopNavWidgets("this arg is ignored", {a:1, b: 2});
+
+        expect(
+          display_prefs.attr(exp.path).top_nav.widget_list.serialize()
+        ).toEqual({a: 1, b: 2});
+      });
+
+      it("gets widget list", function () {
+        display_prefs.setTopNavWidgets("this arg is ignored", {a: 1, b: 2});
+
+        expect(display_prefs.getTopNavWidgets()).toEqual({a: 1, b: 2});
+      });
+
+      it("returns {} by default", function () {
+        expect(display_prefs.getTopNavWidgets()).toEqual({});
+      });
+    });
+  });
+
+   describe("filter hiding", function () {
+     afterEach(function() {
+       display_prefs.resetPagePrefs();
+     });
+
+     it("sets filter hidden", function() {
+       display_prefs.setFilterHidden(true);
+
+       expect(
+         display_prefs.attr(exp.path).filter_widget.is_hidden
+       ).toBe(true);
+     });
+
+     it("gets filter hidden", function () {
+       display_prefs.setFilterHidden(true);
+
+       expect(display_prefs.getFilterHidden()).toBe(true);
+     });
+
+     it("returns false by default", function () {
+       expect(display_prefs.getFilterHidden()).toBe(false);
+     });
+   });
+
 
   describe("#setCollapsed", function() {
     afterEach(function() {
@@ -83,10 +149,6 @@ describe("display prefs model", function() {
 
       expect(display_prefs.attr([exp.path, exp.COLLAPSE, "foo"].join("."))).toBe(true);
     });
-
-    xit("sets all collapse values as a collection", function() {
-      //TODO: this feature isn't currently supported for collapse
-    });
   });
 
   function getSpecs (func, token, fooValue, barValue) {
@@ -95,10 +157,11 @@ describe("display prefs model", function() {
 
     return function() {
       function getTest() {
-          var fooActual = display_prefs[func]("unit_test", "foo");
-          var barActual = display_prefs[func]("unit_test", "bar");
-          expect(fooActual.serialize ? fooActual.serialize() : fooActual)[fooMatcher](fooValue);
-          expect(barActual.serialize ? barActual.serialize() : barActual)[barMatcher](barValue);
+        var fooActual = display_prefs[func]("unit_test", "foo");
+        var barActual = display_prefs[func]("unit_test", "bar");
+
+        expect(fooActual.serialize ? fooActual.serialize() : fooActual)[fooMatcher](fooValue);
+        expect(barActual.serialize ? barActual.serialize() : barActual)[barMatcher](barValue);
       }
 
       var exp_token;
@@ -106,6 +169,7 @@ describe("display prefs model", function() {
         exp_token = exp[token]; //late binding b/c not available when describe block is created
       });
 
+      // TODO: figure out why these fail, error is "can.Map: Object does not exist thrown"
       describe("when set for a page", function() {
         beforeEach(function() {
           display_prefs.makeObject(exp.path, exp_token).attr("foo", fooValue);
@@ -132,11 +196,11 @@ describe("display prefs model", function() {
 
         it("sets the default value as the page value", function() {
           display_prefs[func]("unit_test", "foo");
-          var fooActual = display_prefs.attr([exp.path, exp_token, "foo"].join("."))
+          var fooActual = display_prefs.attr([exp.path, exp_token, "foo"].join("."));
           expect(fooActual.serialize ? fooActual.serialize() : fooActual)[fooMatcher](fooValue);
         });
       });
-    }
+    };
   }
 
   describe("#getCollapsed", getSpecs("getCollapsed", "COLLAPSE", true, false));
@@ -149,15 +213,16 @@ describe("display prefs model", function() {
       var exp_token;
       beforeEach(function() {
         exp_token = exp[token];
-      })
+      });
       afterEach(function() {
         display_prefs.removeAttr(exp_token);
         display_prefs.removeAttr(exp.path);
       });
 
+
       it("sets the value for a widget", function() {
         display_prefs[func]("this arg is ignored", "foo", fooValue);
-        var fooActual = display_prefs.attr([exp.path, exp_token, "foo"].join("."));
+        var fooActual  = display_prefs.attr([exp.path, exp_token, "foo"].join("."));
         expect(fooActual.serialize ? fooActual.serialize() : fooActual).toEqual(fooValue);
       });
 
@@ -168,7 +233,7 @@ describe("display prefs model", function() {
         expect(fooActual.serialize ? fooActual.serialize() : fooActual).toEqual(fooValue);
         expect(barActual.serialize ? barActual.serialize() : barActual).toEqual(barValue);
       });
-    }
+    };
   }
 
   describe("#setSorts", setSpecs("setSorts", "SORTS", ["bar", "baz"], ["thud", "jeek"]));
@@ -216,7 +281,7 @@ describe("display prefs model", function() {
         display_prefs.resetPagePrefs();
         can.each(["getSorts", "getCollapsed", "getWidgetHeight", "getColumnWidths"], function(func) {
           expect(display_prefs[func]("unit_test", "foo")).toBe("bar");
-        })
+        });
       });
 
     });
@@ -256,32 +321,81 @@ describe("display prefs model", function() {
 
   });
 
-  describe("PBC-only functions", function() {
+  describe("#findAll", function() {
+    var dp_noversion, dp2_outdated, dp3_current;
+    beforeEach(function() {
+      dp_noversion = new CMS.Models.DisplayPrefs({});
+      dp2_outdated = new CMS.Models.DisplayPrefs({ version : 1});
+      dp3_current = new CMS.Models.DisplayPrefs({ version : CMS.Models.DisplayPrefs.version });
 
-    describe("#getPbcListPrefs", function() {
-
+      spyOn(can.Model.LocalStorage, "findAll").and.returnValue(new $.Deferred().resolve([dp_noversion, dp2_outdated, dp3_current]));
+      spyOn(dp_noversion, "destroy");
+      spyOn(dp2_outdated, "destroy");
+      spyOn(dp3_current, "destroy");
     });
+    it("deletes any prefs that do not have a version set", function(done) {
+      var dfd = CMS.Models.DisplayPrefs.findAll().done(function(dps) {
+        expect(dps).not.toContain(dp_noversion);
+        expect(dp_noversion.destroy).toHaveBeenCalled();
+      });
 
-    describe("#setPbcListPrefs", function() {
-
+      waitsFor(function() { //sanity check --ensure deferred resolves/rejects
+        return dfd.state() !== "pending";
+      }, done);
     });
-
-    describe("#getPbcResponseOpen", function() {
-
+    it("deletes any prefs that have an out of date version", function() {
+      CMS.Models.DisplayPrefs.findAll().done(function(dps) {
+        expect(dps).not.toContain(dp2_outdated);
+        expect(dp2_outdated.destroy).toHaveBeenCalled();
+      });
     });
-
-    describe("#getPbcRequestOpen", function() {
-
+    it("retains any prefs that do not have a version set", function() {
+      CMS.Models.DisplayPrefs.findAll().done(function(dps) {
+        expect(dps).toContain(dp3_current);
+        expect(dp3_current.destroy).not.toHaveBeenCalled();
+      });
     });
+  });
 
-    describe("#setPbcResponseOpen", function() {
-
+  describe("#findOne", function() {
+    var dp_noversion, dp2_outdated, dp3_current;
+    beforeEach(function() {
+      dp_noversion = new CMS.Models.DisplayPrefs({});
+      dp2_outdated = new CMS.Models.DisplayPrefs({ version : 1});
+      dp3_current = new CMS.Models.DisplayPrefs({ version : CMS.Models.DisplayPrefs.version });
     });
-
-    describe("#setPbcRequestOpen", function() {
-
+    it("404s if the display pref does not have a version set", function(done) {
+      spyOn(can.Model.LocalStorage, "findOne").and.returnValue(new $.Deferred().resolve(dp_noversion));
+      spyOn(dp_noversion, "destroy");
+      var dfd = CMS.Models.DisplayPrefs.findOne().done(function(dps) {
+        fail("Should not have resolved findOne for the unversioned display pref");
+      }).fail(function(pseudoxhr) {
+        expect(pseudoxhr.status).toBe(404);
+        expect(dp_noversion.destroy).toHaveBeenCalled();
+      });
+      waitsFor(function() { //sanity check --ensure deferred resolves/rejects
+        return dfd.state() !== "pending";
+      }, done);
     });
-
+    it("404s if the display pref has an out of date version", function() {
+      spyOn(can.Model.LocalStorage, "findOne").and.returnValue(new $.Deferred().resolve(dp2_outdated));
+      spyOn(dp2_outdated, "destroy");
+      CMS.Models.DisplayPrefs.findOne().done(function(dps) {
+        fail("Should not have resolved findOne for the outdated display pref");
+      }).fail(function(pseudoxhr) {
+        expect(pseudoxhr.status).toBe(404);
+        expect(dp2_outdated.destroy).toHaveBeenCalled();
+      });
+    });
+    it("retains any prefs that do not have a version set", function() {
+      spyOn(can.Model.LocalStorage, "findOne").and.returnValue(new $.Deferred().resolve(dp3_current));
+      spyOn(dp3_current, "destroy");
+      CMS.Models.DisplayPrefs.findOne().done(function(dps) {
+        expect(dp3_current.destroy).not.toHaveBeenCalled();
+      }).fail(function() {
+        fail("Should have resolved on findOne for the current display pref");
+      });
+    });
   });
 
 });

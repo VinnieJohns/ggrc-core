@@ -1,0 +1,80 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.pin-content,
+.info-pin {
+  box-shadow: 0 0 5px rgba(0,0,0, 0.3);
+  position: fixed;
+  bottom: 40px;
+  left: 27px;
+  right: 27px;
+  background: $white;
+  z-index: zIndex(pin-content);
+  overflow: auto;
+
+  .info {
+    box-shadow: none;
+    padding: 15px 25px 20px;
+    .small-info {
+      i {
+        opacity: .25;
+        transition: opacity 0.2s ease;
+        cursor: pointer;
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+  }
+  .info-widget-footer {
+    display: none;
+  }
+  select {
+    margin-bottom: 0;
+  }
+}
+
+.side-content {
+  margin-left: 20px;
+  .modal & {
+    margin-left: 0;
+  }
+}
+
+.sticky-info-panel {
+  .pane-header {
+    .details-wrap {
+      margin-top: 30px !important;
+    }
+  }
+  info-pin-buttons {
+    position: fixed;
+    right: 47px;
+    width: 100px;
+    z-index: zIndex(info-pin-buttons);
+
+    &.details-wrap {
+      margin-top: -8px;
+    }
+  }
+}
+
+.info-pane-utility {
+  @extend %clearfix;
+  position: relative;
+  float: right;
+  z-index: zIndex(info-page-dropdown);
+
+  .sticky-info-panel & {
+    position: fixed;
+    right: 47px;
+    z-index: zIndex(info-pane-utility);
+    margin-top: 24px;
+  }
+  .assignable & {
+    position: static;
+    margin-top: 0;
+  }
+}

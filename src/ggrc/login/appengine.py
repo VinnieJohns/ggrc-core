@@ -1,3 +1,6 @@
+# Copyright (C) 2017 Google Inc.
+# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+
 """Login handler for using App Engine authentication with Flask-Login
 
 Assumes app.yaml is configured with:
@@ -14,7 +17,7 @@ E.g., ``login: required`` must be specified *at least* for the '/login' route.
 from google.appengine.api import users
 from ggrc.login.common import find_or_create_user_by_email, get_next_url
 import flask_login
-from flask import url_for, redirect, request, session
+from flask import url_for, redirect, request, session, flash
 
 
 def get_user():
@@ -26,18 +29,14 @@ def get_user():
 
 def login():
   user = get_user()
-  flask_login.login_user(user)
-  #FIXME adding default permissions of None to session for now.
-  session['permissions'] = None
-  return redirect(
-    get_next_url(request, default_url=url_for('dashboard')))
-  #return redirect(
-  #  users.create_login_url(
-  #    get_next_url(request, default_url=url_for('dashboard'))))
+  if user.system_wide_role != 'No Access':
+    flask_login.login_user(user)
+    return redirect(get_next_url(request, default_url=url_for('dashboard')))
+  else:
+    flash(u'You do not have access. Please contact your administrator.', 'alert alert-info')
+    return redirect('/')
 
 def logout():
-  if 'permissions' in session:
-    del session['permissions']
   flask_login.logout_user()
   return redirect(
     users.create_logout_url(

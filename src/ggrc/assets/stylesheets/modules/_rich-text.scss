@@ -1,0 +1,27 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.rich-text {
+  &__wrapper {
+    @include border-radius(2px);
+    border: 1px solid $warmGray;
+    .inline-edit--active & {
+      @include border-radius(0);
+      border: none;
+      margin: -2px -2px -2px -4px;
+    }
+  }
+  &__toolbar {
+    background: $itemBgnd;
+    border-top: 1px solid $warmGray;
+    padding: 3px !important;
+  }
+  &__content {
+    padding: 8px 10px !important;
+    .ql-editor {
+      min-height: 44px;
+    }
+  }
+}

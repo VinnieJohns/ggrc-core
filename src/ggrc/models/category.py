@@ -1,15 +1,15 @@
 
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By:
-# Maintained By:
 
 from ggrc import db
-from sqlalchemy.ext.associationproxy import association_proxy
-from .categorization import Categorization
-from .mixins import Base, Hierarchical
+from sqlalchemy.orm import validates
+from ggrc.models.deferred import deferred
+from ggrc.models.mixins import Base, Hierarchical
+
 
 class CategorizedPublishable(object):
+
   def __init__(self, attr_name, type_name):
     self.attr_name = attr_name
     self.type_name = type_name
@@ -22,57 +22,44 @@ class CategorizedPublishable(object):
   def __call__(self, updater, obj, json_obj):
     return updater.query_for(self.rel_class, json_obj, self.attr_name, True)
 
-class Category(Base, Hierarchical, db.Model):
+
+class CategoryBase(Hierarchical, Base, db.Model):
+  _table_plural = 'category_bases'
   __tablename__ = 'categories'
 
-  name = db.Column(db.String)
-  lft = db.Column(db.Integer)
-  rgt = db.Column(db.Integer)
-  scope_id = db.Column(db.Integer)
-  depth = db.Column(db.Integer)
-  required = db.Column(db.Boolean)
+  type = db.Column(db.String)
+  name = deferred(db.Column(db.String), 'CategoryBase')
+  lft = deferred(db.Column(db.Integer), 'CategoryBase')
+  rgt = deferred(db.Column(db.Integer), 'CategoryBase')
+  scope_id = deferred(db.Column(db.Integer), 'CategoryBase')
+  depth = deferred(db.Column(db.Integer), 'CategoryBase')
+  required = deferred(db.Column(db.Boolean), 'CategoryBase')
+
+  __mapper_args__ = {
+      'polymorphic_on': type
+  }
 
   categorizations = db.relationship(
       'ggrc.models.categorization.Categorization',
       backref='category',
-      )
-  control_categorizations = db.relationship(
-      'Categorization',
-      primaryjoin=\
-          'and_(foreign(Categorization.category_id) == Category.id, '
-               'foreign(Categorization.categorizable_type) == "Control")',
-      )
-  risk_categorizations = db.relationship(
-      'Categorization',
-      primaryjoin=\
-          'and_(foreign(Categorization.category_id) == Category.id, '
-               'foreign(Categorization.categorizable_type) == "Risk")',
-      )
-  controls = association_proxy(
-      'control_categorizations', 'categorizable',
-      creator=lambda categorizable: Categorization(
-          categorizable=categorizable,
-          modified_by_id=1,
-          categorizable_type='Control',
-          ),
-      )
-  risks = association_proxy(
-      'risk_categorizations', 'categorizable',
-      creator=lambda categorizable: Categorization(
-          categorizable=categorizable,
-          modified_by_id=1,
-          categorizable_type='Risk',
-          ),
-      )
+      cascade='all, delete-orphan',
+  )
+
+  @validates('type')
+  def validates_type(self, key, value):
+    return self.__class__.__name__
 
   # REST properties
   _publish_attrs = [
       'name',
-      'scope_id',
+      'type',
       'required',
-      'categorizations',
-      'control_categorizations',
-      'risk_categorizations',
-      CategorizedPublishable('controls', 'Control'),
-      CategorizedPublishable('risks', 'Risk'),
-      ]
+  ]
+  _sanitize_html = [
+      'name',
+  ]
+
+  @classmethod
+  def eager_query(cls):
+    query = super(CategoryBase, cls).eager_query()
+    return query.options()

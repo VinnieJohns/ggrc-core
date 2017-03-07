@@ -1,20 +1,11 @@
-/*
- * Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
- * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
- * Created By:
- * Maintained By:
- */
+/*!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
 
 /* =========================================================
  * Extra scripts for beta designs
  * ========================================================= */
-
-/*
- *= require dashboard
- *= require jquery.cookie
- *= require bootstrap-datepicker
- *= require apps/pbc
- */
 
 jQuery(function ($) {
 
@@ -50,13 +41,12 @@ jQuery(function ($) {
 
   /*Checkbutton in modals widget function*/
   $(document).on("click", ".checkbutton", function(event) {
-    $(this).children("i").toggleClass("grcicon-blank");
-    $(this).children("i").toggleClass("grcicon-x-grey");
+    $(this).children("i").toggleClass("fa-times");
   });
 
   /*Toggle widget function*/
   $(document).on("click", ".accordion-toggle", function(event) {
-    $(this).children("i").toggleClass("grcicon-blue-expand");
+    $(this).children("i").toggleClass("fa fa-caret-right");
   });
 
   /*Toggle slot function*/
@@ -67,7 +57,7 @@ jQuery(function ($) {
 
   $(document).on("click", ".expandAll", function(event) {
     // $("h3.trigger").toggleClass("active").next().slideToggle("fast");
-    $(this).children("i").toggleClass("grcicon-blue-expand");
+    $(this).children("i").toggleClass("fa fa-caret-right");
   });
 
   //Handle remove buttons
@@ -79,10 +69,9 @@ jQuery(function ($) {
     $('#confirmModal').modal('show');
   });
 
-/* no worky 
+/* no worky
   $(document).on("click", ".sluggroup", function(event){
     //alert("here");
-   // $('.riskWidget').each(function(i){
     var $this = $(this);
     $('.sluggroup').removeClass('selected');
     $this.addClass('selected');
@@ -109,14 +98,10 @@ jQuery(function ($) {
       $('#programinformationUnlocked').tab('show');
   });
 
-  for (i=0;i<=50;i++) {
-    $('#tooltip' + i).tooltip();
-  }
-  
 //if includes a xpander we need to toggle it.
-$('body').on('click', '.grcicon-more', function(e) {
+$('body').on('click', '.fa fa-caret-right', function(e) {
   //bootstrap data toggle opens this one up, but ...
-  
+
   e.preventDefault();
 
   //var title = $("em").attr("data-target");
@@ -140,10 +125,10 @@ $('body').on('click', '.grcicon-more', function(e) {
   $("[id$=-more]").each(function(i){
       var el = $(this);
       if (el.hasClass("in")) {
-        //its open close it!  
+        //its open close it!
         el.collapse('hide');
-      } else { 
-        //its already closed, relax. 
+      } else {
+        //its already closed, relax.
         // We have an isue with items on their way to closing and you clicked another, so checking for animating...
         el.filter(":animated").toggleClass("in");
       }
@@ -227,14 +212,14 @@ $('body').on('click', '.grcicon-more', function(e) {
   // add item in target list
 
   $('body').on('click', '.add-me', function(e) {
-    
+
     e.preventDefault();
-    
+
     var $this = $(this),
         $icon = $this.find("i"),
         $itemToAdd = $this.closest("li"),
         $name = $itemToAdd.find(".name").html(),
-        $company = $itemToAdd.find(".company").html(),        
+        $company = $itemToAdd.find(".company").html(),
         $target = $this.closest(".modal-body").find(".target"),
         $unassignedItems = $("#unassignedElements"),
         $unassignedValue = parseInt($unassignedItems.html());
@@ -262,11 +247,11 @@ $('body').on('click', '.grcicon-more', function(e) {
       .removeClass("widgetbtn addme")
       .addClass("widgetbtnoff"); //remove icon square around checkmark (not a button anymore)
     $icon
-      .removeClass("grcicon-chevron-right")
-      .addClass("grcicon-check-green")
+      .removeClass("fa fa-caret-right")
+      .addClass("fa fa-check-square-o green")
     $target
-      .prepend('<li class="new-item"> <div class="row-fluid"> <div class="span6"> <span class="company">' + $company + '</span> <span class="name">'+ $name +'</span> </div> <div class="span6 actions">  <a class="widgetbtn pull-right" id="removeMe" href="#"> <i class="grcicon-remove"></i> </a> <a class="widgetbtn pull-right" href="#"> <i class="grcicon-edit"></i> </a> ' + $item2add + '</div> </div>' + $additionalinfo +' </div> </li>')
-      .find("li.new-item").hide().fadeIn('slow').removeClass("new-item");  
+      .prepend('<li class="new-item"> <div class="row-fluid"> <div class="span6"> <span class="company">' + $company + '</span> <span class="name">'+ $name +'</span> </div> <div class="span6 actions">  <a class="widgetbtn pull-right" id="removeMe" href="#"> <i class="fa fa-ban"></i> </a> <a class="widgetbtn pull-right" href="#"> <i class="fa fa-pencil-square-o"></i> </a> ' + $item2add + '</div> </div>' + $additionalinfo +' </div> </li>')
+      .find("li.new-item").hide().fadeIn('slow').removeClass("new-item");
     $unassignedItems
       .html($unassignedValue + 1).fadeIn();
 
@@ -284,7 +269,7 @@ $('body').on('click', '.grcicon-more', function(e) {
 
     $(this).closest(".btn-group").find(".dropdown-toggle").addClass('halfopacity');
     $(this).closest(".btn-group").find(".dropdown-toggle").removeClass('btn-info');
-    
+
   });
 
   $('body').on('click', '#makeResponsible', function(e) {
@@ -303,22 +288,22 @@ $('body').on('click', '.grcicon-more', function(e) {
     event.preventDefault();
     $(this).closest('li').slideUp("slow", function() { jQuery(this).remove(); });
   });
-  
+
   $('body').on('click', '#showFilters', function(e) {
     e.preventDefault();
     var $this = $(this),
         $filters = $this.closest(".modal-body").find(".filter-group"),
         $searchableLists = $this.closest(".modal-body").find(".filter-block .people-list");
-        
+
     if( $this.hasClass("active") ) {
       $filters.hide();
-      $this.removeClass("active");        
+      $this.removeClass("active");
       $searchableLists.removeClass("short");
     } else {
       $filters.show();
       $this.addClass("active");
       $searchableLists.addClass("short");
-    }      
+    }
   });
 
   $('body').on('click', '#showCategories', function(e) {
@@ -326,16 +311,16 @@ $('body').on('click', '.grcicon-more', function(e) {
     var $this = $(this),
         $filters = $this.closest(".modal-body").find(".category-group"),
         $searchableLists = $this.closest(".modal-body").find(".filter-block .people-list");
-        
+
     if( $this.hasClass("active") ) {
       $filters.hide();
-      $this.removeClass("active");        
+      $this.removeClass("active");
       $searchableLists.removeClass("short");
     } else {
       $filters.show();
       $this.addClass("active");
       $searchableLists.addClass("short");
-    }      
+    }
   });
 
 
@@ -345,14 +330,14 @@ $('body').on('click', '.grcicon-more', function(e) {
         $categoryfilters = $this.closest(".modal-body").find(".category-group"),
         $companyfilters = $this.closest(".modal-body").find(".filter-group"),
         $searchableLists = $this.closest(".modal-body").find(".filter-block .people-list");
-        
+
       $categoryfilters.show();
       $companyfilters.hide();
       $this.addClass("active");
-      $("#filterButton").html("GRC Directory <span class='caret'></span>"); 
+      $("#filterButton").html("GRC Directory <span class='caret'></span>");
       $searchableLists.removeClass("shortest");
       $searchableLists.addClass("short");
-    //}      
+    //}
   });
 
 $('body').on('click', '#showCompanyDirectory', function(e) {
@@ -361,25 +346,25 @@ $('body').on('click', '#showCompanyDirectory', function(e) {
         $categoryfilters = $this.closest(".modal-body").find(".category-group"),
         $companyfilters = $this.closest(".modal-body").find(".filter-group"),
         $searchableLists = $this.closest(".modal-body").find(".filter-block .people-list");
-        
+
     //if( $this.hasClass("active") ) {
       //$filters.hide();
-      //$this.removeClass("active");        
+      //$this.removeClass("active");
       //$searchableLists.removeClass("short");
     //} else {
       $categoryfilters.hide();
       $companyfilters.show();
       $this.addClass("active");
-      $("#filterButton").html("Company Directory <span class='caret'></span>"); 
+      $("#filterButton").html("Company Directory <span class='caret'></span>");
       $searchableLists.addClass("shortest");
       $searchableLists.removeClass("short");
-    //}      
+    //}
   });
 
 
 
   // status js
-  var userHasPriviledge = true;
+  var userHasPrivilege = true;
   $('body').on('click', '#actionButton', function(e) {
     e.preventDefault();
 
@@ -394,7 +379,7 @@ $('body').on('click', '#showCompanyDirectory', function(e) {
         $status = $this.closest(".modal").find("#statusValue"),
         $currentStatus = $this.closest(".modal").find("#statusValue").html();
 
-    if(userHasPriviledge) {
+    if(userHasPrivilege) {
 
       if ($currentStatus === "Draft") {
         $status
@@ -424,26 +409,6 @@ $('body').on('click', '#showCompanyDirectory', function(e) {
   });
 });
 
-function toggleRisk() {
-  //$('.riskWidget').fadeToggle("fast", "linear");
-  var interval = 200;
-  $('.riskWidget').each(function(i){
-    var el = $(this);
-    if(el.hasClass('active')){
-      $('#grcbutton-risk').addClass('halfopacity').removeClass('active');
-      $.cookie('toggle_risk', null);
-      el.delay(i*interval).slideUp(interval);
-      el.removeClass('active');
-    }else{
-      $('#grcbutton-risk').removeClass('halfopacity').addClass('active');
-      $.cookie('toggle_risk', '1', { expires: 1, path: '/' });
-      el.delay(i*interval).slideDown(interval);
-      el.addClass('active');
-    }
-  });
-
-}
-
 function toggleGovernance() {
    var interval = 200;
   $('.govWidget').each(function(i){
@@ -463,60 +428,11 @@ function toggleGovernance() {
 
 }
 
-
-/* Hack to show a prototype of stacked modal slideout/in */
-/* Specific to two modals currently and ignores bootstrap modal functionality (ie I think they use a toggle)
-
-$(document).on("click", "#openSecondModal", function(event) {
-    
-
-          firstmodal = $(this).closest('.modal');
-          secondmodal = $('#basicnewpersonModal');
-
-          secondmodal.css({"margin-left": "+=1050px"});
-          secondmodal.modal('show').fadeIn('slow');
-             
-          firstmodal.animate({ left: parseInt(firstmodal.css('left'),1200) == -300 ? firstmodal.outerWidth() : -300 });
-          firstmodal.addClass('halfopacity');
-          secondmodal.animate({ left: parseInt(firstmodal.css('left'),1200) == -300 ? firstmodal.outerWidth() : -300 });
-
-
-  });
-
-
-$(document).on("click", "#closeSecondModal", function(event) {
-
-
-          secondmodal = $(this).closest('.modal');
-          firstmodal = $('#showSecondModal');
-
-              secondmodal.modal('hide').fadeOut('slow');
-
-              secondmodal.css({"margin-left": "-=1050px"});
-                 
-              firstmodal.animate({ left: parseInt(firstmodal.css('left'),1200) == 750 ? firstmodal.outerWidth() : 750 });
-              firstmodal.removeClass('halfopacity');
-              //secondmodal.animate({ left: parseInt(firstmodal.css('left'),1200) == 600 ? firstmodal.outerWidth() : 600 });
-
-});
-
-//THE ABOVE SHOULD BE IMPLEMENTED VIA BRAD'S SOLUTION
- */
-
 jQuery(function($) {
   if ($.cookie('toggle_governance') == '1')
     toggleGovernance();
   else
     $('.govWidget').hide();
-  if ($.cookie('toggle_risk') == '1')
-    toggleRisk();
-  else
-    $('.riskWidget').hide();
-
-  $('body').on('click', '#grcbutton-risk', function(e) {
-    toggleRisk();
-    e.preventDefault();
-  });
 
   $('body').on('click', '#grcbutton-governance', function(e) {
     toggleGovernance();
@@ -527,4 +443,3 @@ jQuery(function($) {
 $(document).load(function(){
   $("#program_start_date").hide();
 });
-

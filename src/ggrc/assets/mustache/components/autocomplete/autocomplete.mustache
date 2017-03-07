@@ -1,0 +1,15 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="{{className}} objective-selector autocomplete--wrapper">
+  <input type="text"
+    data-lookup="{{searchItemsType}}"
+    null-if-empty="true"
+    {{#if disable}}disabled{{/if}}
+    can-value="value"
+    data-no-automap="{{automappingOff}}"
+    class="{{^if context.isEdit}}input-block-level{{/if}} autocomplete--input"
+    placeholder="{{placeholder}}">
+</div>

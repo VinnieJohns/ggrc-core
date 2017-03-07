@@ -1,0 +1,44 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<custom-attributes instance="instance">
+    {{#if instance.custom_attribute_definitions.length}}
+      {{#iterate_by_two items}}
+      <div class="row-fluid wrap-row">
+      {{#list}}
+        <div class="span6">
+          <div data-custom-attribute="{{id}}" data-type="{{attribute_type}}">
+            <inline-edit
+              instance="instance"
+              ca-id="cad.id"
+              {{#if cav.attribute_object}}
+              value="cav.attribute_object"
+              {{else}}
+              value="cav.attribute_value"
+              {{/if}}
+              values="cad.multi_choice_options"
+              title-text="cad.title"
+              label="cad.label"
+              type="{{type}}"
+              mandatory="cad.mandatory"
+              placeholder="cad.placeholder"
+              helptext="cad.helptext"
+              {{#if_helpers '\
+                #if' instance.snapshot '\
+                or #if' instance.isRevision }}
+                readonly="true"
+              {{else}}
+                {{^is_allowed 'update' instance context='for'}}
+                  readonly="true"
+                {{/is_allowed}}
+              {{/if_helpers}}
+            ></inline-edit>
+          </div>
+        </div>
+      {{/list}}
+      </div>
+      {{/iterate_by_two}}
+    {{/if}}
+</custom-attributes>

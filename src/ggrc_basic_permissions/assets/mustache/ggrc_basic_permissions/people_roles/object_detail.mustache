@@ -1,0 +1,22 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+<div class="selector-info">
+
+  <div class="selector-person-info">
+    <h4>User</h4>
+    <h3>
+      {{{render '/static/mustache/people/popover.mustache' person=this}}}
+      <span class="email">
+        <a href="mailto:{{ email }}">
+          {{ email }}
+        </a>
+      </span>
+    </h3>
+  </div>
+
+</div>
+
+

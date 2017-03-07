@@ -1,0 +1,275 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.assessment-info-pane {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  position: relative;
+
+  .assessment-attributes {
+    margin-right: 30%;
+    padding-right: 12px;
+    padding-bottom: 28px;
+    min-width: 0; /* fixes known issue with flexboxes and text-overflow */
+
+    assessment-mapped-controls,
+    collapsible-panel-header {
+      .fa-plus-circle {
+        opacity: 1;
+        color: $btnGreen;
+
+        &:hover {
+          color: $icon-color-hover;
+        }
+      }
+    }
+  }
+
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: bold;
+    line-height: 24px;
+    margin: 0 0 4px;
+
+    .fa {
+      color: $icon-color-dark;
+      width: 32px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      cursor: pointer;
+      margin-left: 8px;
+
+      &:hover {
+        color: $icon-color-hover;
+      }
+    }
+  }
+
+  .assessment-description {
+    margin: 0 0 12px;
+  }
+
+  .assessment-controls {
+    background: $light-grey-background;
+    padding: 12px 12px 24px;
+    box-sizing: border-box;
+    border-radius: 2px;
+    margin-bottom: 16px;
+
+    .assessment-note {
+      text-align: right;
+
+      .fa {
+        color: $icon-color-dark;
+      }
+    }
+
+    .assessment-controls__note {
+      display: block;
+      line-height: 24px;
+      font-size: 13px;
+      color: $icon-color-hover;
+      padding: 0 28px 8px;
+    }
+
+    .attachment-list li {
+      margin: 0;
+      line-height: 18px;
+    }
+  }
+
+  .assessment-controls__extra-controls {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+
+    > * {
+      position: relative;
+      box-sizing: border-box;
+      padding: 0 16px 0 28px;
+      flex: 1 1 50%;
+      max-width: 50%;
+    }
+
+    .assesment-attachment-list {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .attach-file-info {
+      margin: -10px 0 16px;
+      font-size: 0.9em;
+      font-style: italic;
+    }
+  }
+}
+
+.assessment-module {
+  &.info {
+    padding: 16px 20px;
+    border-radius: 2px;
+    box-shadow: 0 3px 8px -3px rgba(0, 0, 0, 0.3);
+
+    ggrc-gdrive-picker-launcher {
+      display: inline-block;
+      margin: 0;
+    }
+
+    h6 {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pane-header {
+      h6 {
+        margin: 0;
+      }
+      .pane-header__title {
+        line-height: 24px;
+        display: flex;
+
+        h3 {
+          line-height: 24px;
+          margin: 0;
+          box-sizing: border-box;
+          padding: 0 16px 0 0;
+        }
+
+        i.fa {
+          line-height: 24px;
+          width: 24px;
+        }
+
+        .state-value {
+          padding: 0 8px;
+          box-sizing: border-box;
+          min-height: 22px;
+          margin: 0 16px 0 0;
+          line-height: 22px;
+          align-self: center;
+        }
+      }
+    }
+
+    .assessment-controls {
+      h6 {
+        margin: 0;
+      }
+
+      .alert {
+        position: relative;
+
+        .close {
+          position: absolute;
+          top: 5px;
+          right: 12px;
+          line-height: 18px;
+        }
+      }
+      .assessment-controls-toolbar {
+        margin: 8px 6px 0 28px;
+        display: flex;
+        justify-content: flex-start;
+
+        .ggrc_controllers_quick_form {
+          display: flex;
+          box-sizing: border-box;
+          flex-direction: row-reverse;
+
+          > * {
+            text-align: center;
+            margin: 0 0 0 12px;
+          }
+        }
+      }
+    }
+  }
+
+  .assessment-comments {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    padding-left: 12px;
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid $border-color;
+
+    &:after {
+      content: '';
+      width: 100%;
+      bottom: 0;
+      left: 0;
+      height: 50px;
+      display: block;
+      position: absolute;
+      background: linear-gradient(to bottom, transparent, white 70%);
+    }
+
+    .assessment-comments-add {
+      display: block;
+    }
+
+    mapping-tree-view {
+      overflow-y: auto;
+      padding-bottom: 45px;
+    }
+
+    .side-content {
+      margin: 0;
+    }
+  }
+
+  .tabs-wrap {
+    margin-top: -28px;
+    position: relative;
+
+    .atrribute-tab-panel-column {
+      display: inline-block;
+      width: 32%;
+      vertical-align: top;
+    }
+
+    collapsible-panel.details-item {
+
+      .collapsible-panel-body {
+        .body-inner {
+          border-bottom: 0;
+        }
+      }
+    }
+  }
+}
+
+.assessment-custom-attributes {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+
+  .ql-container {
+    background: #fff;
+  }
+}
+
+.assessment-url-list__add-btn {
+  position: absolute;
+  top: 1px;
+  cursor: pointer;
+  left: 57px;
+
+  .fa {
+    color: $btnGreen;
+
+    &:hover {
+      color: $icon-color-hover;
+    }
+  }
+}

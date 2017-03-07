@@ -1,0 +1,25 @@
+dev:
+  build: .
+  command: /sbin/my_init
+  volumes:
+   - ".:/vagrant"
+   - ".:/vagrant_bind"
+   - "./provision/docker/mysql:/etc/mysql/conf.d"
+  privileged: true
+  environment:
+   - PYTHONDONTWRITEBYTECODE=true
+   - NODE_PATH=/vagrant-dev/node_modules/
+
+selenium:
+  build: .
+  dockerfile: Dockerfile-selenium
+  volumes:
+   - "./test/selenium:/selenium"
+   - "/dev/shm:/dev/shm"
+  links:
+   - dev 
+  environment:
+   - PYTHONDONTWRITEBYTECODE=true
+   - PYTHONPATH=/selenium/src
+   - SCREEN_WIDTH=1440
+   - SCREEN_HEIGHT=900

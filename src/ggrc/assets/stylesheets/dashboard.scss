@@ -1,88 +1,36 @@
-/* FIXME: Fix for https://github.com/rails/rails/issues/3686
- * - Bump this counter if asset dependencies aren't re-compiled on change
- * counter: 0
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
  */
 
-// NOTE! Don't use Sprockets `require` statements inside SASS files
+// Whole file is commented. Leaving it for now. WIll be removed later.
+// @import "bootstrap-setup";
 
-// Required external stylesheets
+$icon-font-path: "./src/ggrc/assets/vendor/bootstrap-sass/vendor/assets/stylesheets/bootstrap";
+@import "./src/ggrc/assets/vendor/bootstrap-sass/vendor/assets/stylesheets/bootstrap";
+@import "~compass-mixins/lib/compass";
 
-//@import "jquery-ui";
-
-@import "bootstrap";
-@import "bootstrap-responsive";
-
-@import "compass/css3";
-//@import "bootstrap-wysihtml5-0.0.2";
+$fa-font-path: "/static/fonts";
+@import "~font-awesome/scss/font-awesome";
+@import "~quill/dist/quill.base.css";
+@import "~quill/dist/quill.snow.css";
 
 @import "setup";
-@import "common";
+@import "colors";
+@import "mixins";
+@import "placeholders";
+@import "typography";
+@import "helpers";
+@import "custom_font_awesome_icons";
+
+@import "z_index";
 @import "layout";
+@import "modules";
+
+@import "common";
 @import "widget";
 @import "tree";
-@import "header";
-@import "footer";
-@import "flash";
-@import "styleguide";
-
-// page specific scss
-@import "reg-mapper";
-@import "pbc";
-
-@import "quick-search";
-@import "modal";
-
-@import "popover";
-@import "login";
-
-@import "icons";
-
+@import "pin";
 
 @import "responsive";
-@import "js-helpers";
-
-@import "import-export";
-/*
-
-// editable styles start here
-
-  // variables, overrides, mixins
-  @import "setup";
-
-  // bootstrap rewrites
-  @import "rewrite";
-  
-  // global definitions
-  @import "global";
-
-  // everything
-  @import "gcms";
-
-  // modals aka dialogs
-  @import "progressbars";
-
-
-  // modals aka dialogs
-  @import "modals";
-
-  // modals aka dialogs
-  @import "widgets";
-
-  // SVG graphing
-  @import "graph";
-  
-  // icons
-  @import "icons";
-
-  // tables
-  @import "tables";
-
-
-  // new page structure and elements
-  @import "page-structure";
-
-  // fluid-layout styles
-  @import "fluid";
-
-
-*/
+@import "components";

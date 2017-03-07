@@ -1,0 +1,213 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.people-list__label {
+  .modal-body & {
+    display: none;
+  }
+}
+
+people-list {
+  .alert-verifier {
+    border-width: 2px;
+  }
+}
+
+.person-label {
+  @include border-radius(50%);
+  width: 35px;
+  height: 35px;
+  float: left;
+  margin-right: 10px;
+  color: $white;
+  text-align: center;
+  line-height: 36px;
+  font-size: 14px;
+  .required {
+    display: inline-block;
+  }
+  .modal-body & {
+    width: 20px;
+    height: 20px;
+    margin-right: 7px;
+    line-height: 20px;
+    font-size: 12px;
+  }
+  &.none {
+    background: $lightGray;
+    &:after {
+      content: "N";
+    }
+  }
+  &.assignee {
+    background: $olive;
+    &:after {
+      content: "A";
+    }
+  }
+  &.assessor,
+  &.assessors {
+    background: $purple;
+    &:after {
+      content: "A";
+    }
+  }
+  &.requester {
+    background: $purple;
+    &:after {
+      content: "R";
+    }
+  }
+  &.creator,
+  &.creators {
+    background: $orange;
+    &:after {
+      content: "C";
+    }
+  }
+  &.verifier,
+  &.verifier {
+    background: $orange;
+    &:after {
+      content: "V";
+    }
+  }
+  &.lead {
+    background: $orange;
+    &:after {
+      content: "L";
+    }
+  }
+  &.auditor {
+    background: $olive;
+    &:after {
+      content: "A";
+    }
+  }
+  &.manager {
+    background: $purple;
+    &:after {
+      content: "M";
+    }
+  }
+}
+
+.label-list {
+  @extend %reset-list;
+  > li {
+    margin-bottom: 10px;
+    @extend %clearfix;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  &.dates {
+    > li {
+      margin-bottom: 0;
+      position: relative;
+      &:hover {
+        .file-controls {
+          @include opacity(1);
+          left: -25px;
+        }
+      }
+      &.gray {
+        h6 {
+          color: $gray;
+        }
+      }
+    }
+  }
+  i {
+    @include opacity(.6);
+  }
+  a {
+    &:hover {
+      i {
+        @include opacity(1);
+      }
+    }
+  }
+  label {
+    float: left;
+    width: 32%;
+    font-size: 10px;
+    line-height: 20px;
+    margin-top: 1px;
+    text-transform: uppercase;
+    position: relative;
+    .choose-object-wrap & {
+      line-height: 20px;
+    }
+    .file-controls {
+      top: 0;
+    }
+    &:hover {
+      .file-controls {
+        @include opacity(1);
+        left: -25px;
+      }
+    }
+    &.people-group {
+      float: none;
+      width: auto;
+      .people-group_title {
+        font-weight: bold;
+      }
+      .person-add {
+        padding-left: 16px;
+      }
+    }
+    .modal-body & {
+      text-transform: none;
+      width: 32%;
+    }
+    .person-label {
+      width: 20px;
+      height: 20px;
+      margin-right: 4px;
+      line-height: 20px;
+      font-size: 10px;
+    }
+  }
+  .input-group {
+    float: left;
+    width: 68%;
+  }
+  .disabled {
+    cursor: default;
+    @include opacity(.3);
+  }
+  ul {
+    @extend %reset-list;
+    float: left;
+    width: 55%;
+
+    .modal-body & {
+      width: 50%;
+    }
+    li {
+      margin-bottom: 3px;
+      position: relative;
+      &:last-child {
+        margin-bottom: 0;
+      }
+      &:hover {
+        .file-controls {
+          @include opacity(1);
+          left: -25px;
+        }
+      }
+    }
+  }
+}
+
+.person-selector {
+  input {
+    float: left;
+    margin-right: 5px;
+    width: 70%;
+  }
+}

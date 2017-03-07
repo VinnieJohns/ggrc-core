@@ -1,30 +1,54 @@
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By: david@reciprocitylabs.com
-# Maintained By: david@reciprocitylabs.com
 
 class UserPermissions(object):
   """Interface required for extensions providing user rights information for
   role-based access control.
   """
-  def is_allowed_create(self, resource_type, context_id):
+  def is_allowed_create(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to create a resource of the specified
     type in the context."""
     raise NotImplementedError()
 
-  def is_allowed_read(self, resource_type, context_id):
+  def is_allowed_read(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to read a resource of the specified
     type in the context."""
     raise NotImplementedError()
 
-  def is_allowed_update(self, resource_type, context_id):
+  def is_allowed_read_for(self, instance):
+    """Whether or not the user is allowed to read this particular resource
+    instance. This is in contrast to ``is_allowed_read`` which checks that the
+    user can read resources of this type, though may not be able to read any
+    one particular instance depending upon permissions implementation.
+    """
+    raise NotImplementedError()
+
+  def is_allowed_update(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to update a resource of the specified
     type in the context."""
     raise NotImplementedError()
 
-  def is_allowed_delete(self, resource_type, context_id):
+  def is_allowed_update_for(self, instance):
+    """Whether or not the user is allowed to update this particular resource
+    instance. This is in contrast to ``is_allowed_update`` which checks that
+    the user can update resources of this type, though may not be able to
+    update any one particular instance depending upon permissions
+    implementation.
+    """
+    raise NotImplementedError()
+
+  def is_allowed_delete(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to delete a resource of the specified
     type in the context."""
+    raise NotImplementedError()
+
+  def is_allowed_delete_for(self, instance):
+    """Whether or not the user is allowed to delete this particular resource
+    instance. This is in contrast to ``is_allowed_delete`` which checks that
+    the user can delete resources of this type, though may not be able to
+    delete any one particular instance depending upon permissions
+    implementation.
+    """
     raise NotImplementedError()
 
   def create_contexts_for(self, resource_type):
@@ -67,29 +91,32 @@ class BasicUserPermissions(UserPermissions):
     self.update_contexts = update_contexts or {}
     self.delete_contexts = delete_contexts or {}
 
-  def is_allowed_create(self, resource_type, context_id):
+  def is_allowed_create(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to create a resource of the specified
     type in the context."""
     return resource_type in self.create_contexts and \
         context_id in self.create_contexts[resource_type]
 
-  def is_allowed_read(self, resource_type, context_id):
+  def is_allowed_read(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to read a resource of the specified
     type in the context."""
     return resource_type in self.read_contexts and \
         context_id in self.read_contexts[resource_type]
 
-  def is_allowed_update(self, resource_type, context_id):
+  def is_allowed_update(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to update a resource of the specified
     type in the context."""
     return resource_type in self.update_contexts and \
         context_id in self.update_contexts[resource_type]
 
-  def is_allowed_delete(self, resource_type, context_id):
+  def is_allowed_delete(self, resource_type, resource_id, context_id):
     """Whether or not the user is allowed to delete a resource of the specified
     type in the context."""
     return resource_type in self.delete_contexts and \
         context_id in self.delete_contexts[resource_type]
+
+  def is_allowed_delete_for(self, instance):
+    return True
 
   def create_contexts_for(self, resource_type):
     """All contexts in which the user has create permission."""

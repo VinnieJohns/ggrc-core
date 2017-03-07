@@ -1,642 +1,387 @@
-/*
- * Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
- * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
- * Created By:
- * Maintained By:
- */
+/*!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
 
-//require can.jquery-all
+(function (can) {
+  can.Model.Cacheable('CMS.Models.Context', {
+    root_object: 'context',
+    root_collection: 'contexts',
+    category: 'contexts',
+    findAll: '/api/contexts',
+    findOne: '/api/contexts/{id}',
+    create: 'POST /api/contexts',
+    update: 'PUT /api/contexts/{id}',
+    destroy: 'DELETE /api/contexts/{id}',
+    attributes: {
+      context: 'CMS.Models.Context.stub',
+      related_object: 'CMS.Models.get_stub',
+      user_roles: 'CMS.Models.UserRole.stubs'
+    }
+  }, {});
 
-(function(can) {
-
-can.Model.Cacheable("CMS.Models.Relationship", {
-    root_object: "relationship"
-  , root_collection: "relationships"
-  , findAll: "GET /api/relationships"
-  , create: "POST /api/relationships"
-  , destroy: "DELETE /api/relationships/{id}"
-}, {
-    init: function() {
-        var _super = this._super;
-        function reinit() {
-            var that = this;
-
-            typeof _super === "function" && _super.call(this);
-            this.attr("source", CMS.Models.get_instance(
-                  this.source_type || this.source.type
-                  , this.source_id || this.source.id
-                  , this.source));
-            this.attr("destination", CMS.Models.get_instance(
-                  this.destination_type || this.destination.type
-                  , this.destination_id || this.destination.id
-                  , this.destination));
-
-            this.each(function(value, name) {
-              if (value === null)
-              that.removeAttr(name);
-            });
+  can.Model.Cacheable('CMS.Models.Program', {
+    root_object: 'program',
+    root_collection: 'programs',
+    category: 'programs',
+    findAll: '/api/programs',
+    findOne: '/api/programs/{id}',
+    create: 'POST /api/programs',
+    update: 'PUT /api/programs/{id}',
+    destroy: 'DELETE /api/programs/{id}',
+    mixins: ['contactable', 'unique_title', 'ca_update', 'timeboxed'],
+    is_custom_attributable: true,
+    attributes: {
+      context: 'CMS.Models.Context.stub',
+      owners: 'CMS.Models.Person.stubs',
+      modified_by: 'CMS.Models.Person.stub',
+      object_people: 'CMS.Models.ObjectPerson.stubs',
+      people: 'CMS.Models.Person.stubs',
+      related_sources: 'CMS.Models.Relationship.stubs',
+      related_destinations: 'CMS.Models.Relationship.stubs',
+      objectives: 'CMS.Models.Objective.stubs',
+      sections: 'CMS.Models.get_stubs',
+      directives: 'CMS.Models.Directive.stubs',
+      controls: 'CMS.Models.Control.stubs',
+      audits: 'CMS.Models.Audit.stubs',
+      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs'
+    },
+    tree_view_options: {
+      show_view: GGRC.mustache_path + '/programs/tree.mustache',
+      attr_view: GGRC.mustache_path + '/programs/tree-item-attr.mustache',
+      footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+      attr_list: [
+        {
+          attr_title: 'Manager',
+          attr_name: 'owner',
+          attr_sort_field: 'authorizations.0.person.name|email'
         }
-
-        this.bind("created", can.proxy(reinit, this));
-
-        reinit.call(this);
+      ].concat(can.Model.Cacheable.attr_list.filter(function (attr) {
+        return attr.attr_name !== 'owner';
+      })).concat([
+        {attr_title: 'URL', attr_name: 'url'},
+        {attr_title: 'Reference URL', attr_name: 'reference_url'},
+        {attr_title: 'Effective Date', attr_name: 'start_date'},
+        {attr_title: 'Stop Date', attr_name: 'end_date'}
+      ]),
+      add_item_view: GGRC.mustache_path + '/base_objects/tree_add_item.mustache'
+    },
+    links_to: {
+      System: {},
+      Process: {},
+      Facility: {},
+      OrgGroup: {},
+      Vendor: {},
+      Project: {},
+      DataAsset: {},
+      AccessGroup: {},
+      Product: {},
+      Market: {}
+    },
+    defaults: {
+      status: 'Draft'
+    },
+    statuses: ['Draft', 'Deprecated', 'Active'],
+    init: function () {
+      this.validateNonBlank('title');
+      this._super.apply(this, arguments);
     }
-});
+  }, {});
 
-can.Model.Cacheable("CMS.Models.Program", {
-  root_object : "program"
-  , root_collection : "programs"
-  , findAll : "/api/programs?kind=Directive"
-  , create : "POST /api/programs"
-  , update : "PUT /api/programs/{id}"
-  , init : function() {
-    this.validatePresenceOf("title");
-    this._super.apply(this, arguments);
-  }
-}, {});
+  can.Model.Cacheable('CMS.Models.Option', {
+    root_object: 'option',
+    findAll: 'GET /api/options',
+    findOne: 'GET /api/options/{id}',
+    create: 'POST /api/options',
+    update: 'PUT /api/options/{id}',
+    destroy: 'DELETE /api/options/{id}',
+    root_collection: 'options',
+    cache_by_role: {},
+    for_role: function (role) {
+      var self = this;
 
-can.Model.Cacheable("CMS.Models.ProgramDirective", {
-    root_object : "program_directive"
-    , root_collection : "program_directives"
-    , create: "POST /api/program_directives"
-    , destroy : "DELETE /api/program_directives/{id}"
-}, {
-    init : function() {
-        var _super = this._super;
-        function reinit() {
-            var that = this;
-
-            typeof _super === "function" && _super.call(this);
-            this.attr("program", CMS.Models.get_instance(
-              "Program",
-              this.program_id || (this.program && this.program.id)));
-            this.attr("directive", CMS.Models.get_instance(
-              (this.directive ? this.directive.type : "Directive"),
-              this.directive_id || (this.directive && this.directive.id)));
-
-            this.each(function(value, name) {
-              if (value === null)
-              that.removeAttr(name);
-            });
-        }
-
-        this.bind("created", can.proxy(reinit, this));
-
-        reinit.call(this);
+      if (!this.cache_by_role[role]) {
+        this.cache_by_role[role] =
+          this.findAll({role: role}).then(function (options) {
+            self.cache_by_role[role] = options;
+            return options;
+          });
+      }
+      return $.when(this.cache_by_role[role]);
     }
-});
+  }, {});
 
-can.Model.Cacheable("CMS.Models.Directive", {
-  root_object : "directive"
-  , root_collection : "directives"
-  // `rootModel` overrides `model.shortName` when determining polymorphic types
-  , root_model : "Directive"
-  , findAll : "/api/directives"
-  , create : "POST /api/directives"
-  , update : "PUT /api/directives/{id}"
-  , attributes : {
-    sections : "CMS.Models.SectionSlug.models"
-    //, program : "CMS.Models.Program.model"
-  }
-  , serialize : {
-    "CMS.Models.Program.model" : function(val, type) {
-      return {id : val.id, href : val.selfLink || val.href};
+  can.Model.Cacheable('CMS.Models.Objective', {
+    root_object: 'objective',
+    root_collection: 'objectives',
+    category: 'objectives',
+    title_singular: 'Objective',
+    title_plural: 'Objectives',
+    findAll: 'GET /api/objectives',
+    findOne: 'GET /api/objectives/{id}',
+    create: 'POST /api/objectives',
+    update: 'PUT /api/objectives/{id}',
+    destroy: 'DELETE /api/objectives/{id}',
+    mixins: ['ownable', 'contactable', 'unique_title', 'ca_update'],
+    is_custom_attributable: true,
+    attributes: {
+      context: 'CMS.Models.Context.stub',
+      owners: 'CMS.Models.Person.stubs',
+      modified_by: 'CMS.Models.Person.stub',
+      sections: 'CMS.Models.get_stubs',
+      controls: 'CMS.Models.Control.stubs',
+      object_people: 'CMS.Models.ObjectPerson.stubs',
+      related_sources: 'CMS.Models.Relationship.stubs',
+      related_destinations: 'CMS.Models.Relationship.stubs',
+      objective_objects: 'CMS.Models.ObjectObjective.stubs',
+      custom_attribute_values: 'CMS.Models.CustomAttributeValue.stubs'
+    },
+    tree_view_options: {
+      show_view: GGRC.mustache_path + '/objectives/tree.mustache',
+      attr_view: GGRC.mustache_path + '/objectives/tree-item-attr.mustache',
+      footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+      attr_list: can.Model.Cacheable.attr_list.concat([
+        {
+          attr_title: 'Last Assessment Date',
+          attr_name: 'last_assessment_date',
+          order: 45 // between State and Primary Contact
+        },
+        {attr_title: 'URL', attr_name: 'url'},
+        {attr_title: 'Reference URL', attr_name: 'reference_url'}
+      ]),
+      display_attr_names: ['title', 'owner', 'status', 'last_assessment_date'],
+      add_item_view: GGRC.mustache_path + '/snapshots/tree_add_item.mustache',
+      create_link: true,
+      show_related_assessments: true,
+      // draw_children: true,
+      start_expanded: false,
+      child_options: [{
+        model: can.Model.Cacheable,
+        mapping: 'related_objects', // 'related_and_able_objects'
+        footer_view: GGRC.mustache_path + '/base_objects/tree_footer.mustache',
+        add_item_view: GGRC.mustache_path +
+        '/base_objects/tree_add_item.mustache',
+        title_plural: 'Business Objects',
+        draw_children: false
+      }]
+    },
+    defaults: {
+      status: 'Draft'
+    },
+    statuses: ['Draft', 'Deprecated', 'Active'],
+    init: function () {
+      this.validateNonBlank('title');
+      this._super.apply(this, arguments);
     }
-  }
-  , defaults : {
-    sections : []
-  }
-  , model : function(attrs) {
-    if(!attrs[this.root_object]) {
-      attrs = { directive : attrs };
+  }, {
+  });
+
+  can.Model.Cacheable('CMS.Models.Help', {
+    root_object: 'help',
+    root_collection: 'helps',
+    findAll: 'GET /api/help',
+    findOne: 'GET /api/help/{id}',
+    update: 'PUT /api/help/{id}',
+    destroy: 'DELETE /api/help/{id}',
+    create: 'POST /api/help'
+  }, {});
+
+  can.Model.Cacheable('CMS.Models.Event', {
+    root_object: 'event',
+    root_collection: 'events',
+    findAll: 'GET /api/events',
+    list_view_options: {
+      find_params: {
+        __include: 'revisions'
+      }
+    },
+    attributes: {
+      modified_by: 'CMS.Models.Person.stub'
     }
-    var kind;
-    try {
-      kind = GGRC.infer_object_type(attrs);
-    } catch(e) {
-      console.warn("infer_object_type threw an error on Directive stub (likely no 'kind')");
+  }, {});
+
+  can.Model.Cacheable('CMS.Models.Role', {
+    root_object: 'role',
+    root_collection: 'roles',
+    findAll: 'GET /api/roles',
+    findOne: 'GET /api/roles/{id}',
+    update: 'PUT /api/roles/{id}',
+    destroy: 'DELETE /api/roles/{id}',
+    create: 'POST /api/roles',
+    scopes: [
+      'Private Program',
+      'Workflow',
+      'System'
+    ],
+    defaults: {
+      permissions: {
+        read: [],
+        update: [],
+        create: [],
+        'delete': []
+      }
     }
-    var m = this.findInCacheById(attrs.directive.id);
-    if(!m || m.constructor === CMS.Models.Directive) {
-      //We accidentally created a Directive or haven't created a subtype yet.
-      if(m) {
-        delete CMS.Models.Directive.cache[m.id];
-        m = this._super.call(kind, $.extend(m.serialize(), attrs));
+  }, {
+    allowed: function (operation, objectOrClass) {
+      var cls = typeof objectOrClass === 'function' ?
+        objectOrClass : objectOrClass.constructor;
+      return !!~can.inArray(cls.model_singular, this.permissions[operation]);
+    },
+    not_system_role: function () {
+      return this.attr('scope') !== 'System';
+    },
+    permission_summary: function () {
+      if (this.name === 'ProgramOwner') {
+        return 'Owner';
+      }
+      if (this.name === 'ProgramEditor') {
+        return 'Can Edit';
+      }
+      if (this.name === 'ProgramReader') {
+        return 'View Only';
+      }
+      return this.name;
+    }
+  });
+
+  can.Model.Cacheable('CMS.Models.MultitypeSearch', {}, {});
+
+  can.Model.Cacheable('CMS.Models.BackgroundTask', {
+    root_object: 'background_task',
+    root_collection: 'background_tasks',
+    findAll: 'GET /api/background_tasks',
+    findOne: 'GET /api/background_tasks/{id}',
+    update: 'PUT /api/background_tasks/{id}',
+    destroy: 'DELETE /api/background_tasks/{id}',
+    create: 'POST /api/background_tasks',
+    scopes: [],
+    defaults: {}
+  }, {
+    poll: function () {
+      var dfd = new $.Deferred();
+      var self = this;
+      var wait = 2000;
+
+      function _poll() {
+        self.refresh().then(function (task) {
+          // Poll until we either get a success or a failure:
+          if (['Success', 'Failure'].indexOf(task.status) < 0) {
+            setTimeout(_poll, wait);
+          } else {
+            dfd.resolve(task);
+          }
+        });
+      }
+      _poll();
+      return dfd;
+    }
+  });
+
+  CMS.Models.get_instance = function (objectType, objectId, paramsOrObject) {
+    var model;
+    var params = {};
+    var instance;
+    var href;
+
+    if (typeof objectType === 'object' || objectType instanceof can.Stub) {
+      // assume we only passed in params_or_object
+      paramsOrObject = objectType;
+      if (!paramsOrObject) {
+        return null;
+      }
+      if (paramsOrObject instanceof can.Model) {
+        objectType = paramsOrObject.constructor.shortName;
+      } else if (paramsOrObject instanceof can.Stub) {
+        objectType = paramsOrObject.type;
+      } else if (!paramsOrObject.selfLink && paramsOrObject.type) {
+        objectType = paramsOrObject.type;
       } else {
-        m = this._super.call(kind, attrs);
+        href = paramsOrObject.selfLink || paramsOrObject.href;
+        objectType = can.map(
+            window.cms_singularize(/^\/api\/(\w+)\//.exec(href)[1]).split('_'),
+            can.capitalize
+          ).join('');
       }
-      this.cache[m.id] = m;
-    } else {
-      m = this._super.apply(this, arguments);
+      objectId = paramsOrObject.id;
     }
-    return m;
-  }
-  , init : function() {
-    this.validatePresenceOf("title");
-    this.validateInclusionOf("kind", this.meta_kinds);
-    this._super.apply(this, arguments);
-  }
-}, {
-  init : function() {
-    this._super && this._super.apply(this, arguments);
-    var that = this;
-    this.attr("descendant_sections", can.compute(function() {
-      var sections = [].slice.call(that.attr("sections"), 0);
-      return can.reduce(that.sections, function(a, b) {
-        return a.concat(can.makeArray(b.descendant_sections()));
-      }, sections);
-    }));
-    this.attr("descendant_sections_count", can.compute(function() {
-      return that.attr("descendant_sections")(true).length; //giving it a value to force revalidation
-    }));
-  }
-  , lowercase_kind : function() { return this.kind ? this.kind.toLowerCase() : undefined; }
-  , stub : function() {
-    return $.extend(this._super(), {kind : this.kind });
-  }
-});
 
-CMS.Models.Directive("CMS.Models.Regulation", {
-  findAll : "/api/directives?kind=Regulation"
-  , defaults : {
-    kind : "Regulation"
-  }
-  , attributes : {
-    sections : "CMS.Models.SectionSlug.models"
-    //, program : "CMS.Models.Program.model"
-  }
-  , serialize : {
-    "CMS.Models.Program.model" : function(val, type) {
-      return {id : val.id, href : val.selfLink || val.href};
+    model = CMS.Models[objectType];
+
+    if (!model) {
+      return null;
     }
-  }
-  , meta_kinds : [ "Regulation" ]
-  , cache : can.getObject("cache", CMS.Models.Directive, true)
-}, {});
 
-CMS.Models.Directive("CMS.Models.Policy", {
-  findAll : "/api/directives?kind__in=Company+Policy,Org+Group+Policy,Data+Asset+Policy,Product+Policy,Contract-Related+Policy,Company+Controls+Policy"
-  , defaults : {
-    kind : "Company Policy"
-  }
-  , attributes : {
-    sections : "CMS.Models.SectionSlug.models"
-    //, program : "CMS.Models.Program.model"
-  }
-  , serialize : {
-    "CMS.Models.Program.model" : function(val, type) {
-      return {id : val.id, href : val.selfLink || val.href};
+    if (!objectId) {
+      return null;
     }
-  }
-  , meta_kinds : [  "Company Policy", "Org Group Policy", "Data Asset Policy", "Product Policy", "Contract-Related Policy", "Company Controls Policy" ]
-  , cache : can.getObject("cache", CMS.Models.Directive, true)
-}, {});
 
-CMS.Models.Directive("CMS.Models.Contract", {
-  findAll : "/api/directives?kind=Contract"
-  , defaults : {
-    kind : "Contract"
-  }
-  , attributes : {
-    sections : "CMS.Models.SectionSlug.models"
-    //, program : "CMS.Models.Program.model"
-  }
-  , serialize : {
-    "CMS.Models.Program.model" : function(val, type) {
-      return {id : val.id, href : val.selfLink || val.href};
+    if (!!paramsOrObject) {
+      if ($.isFunction(paramsOrObject.serialize)) {
+        $.extend(params, paramsOrObject.serialize());
+      } else {
+        $.extend(params, paramsOrObject || {});
+      }
     }
-  }
-  , meta_kinds : [ "Contract" ]
-  , cache : can.getObject("cache", CMS.Models.Directive, true)
-}, {});
 
-can.Model.Cacheable("CMS.Models.OrgGroup", {
-  root_object : "org_group"
-  , root_collection : "org_groups"
-  , findAll : "/api/org_groups"
-  , create : "POST /api/org_groups"
-  , update : "PUT /api/org_groups/{id}"
-  , tree_view_options : {
-    list_view : GGRC.mustache_path + "/base_objects/tree.mustache"
-    , child_options : [{
-      model : null
-      , find_params : {
-        "destination_type" : "System"
-        , "source_type" : "OrgGroup"
-        , relationship_type_id : "org_group_has_process"
+    instance = model.findInCacheById(objectId);
+    if (!instance) {
+      if (params.selfLink) {
+        params.id = objectId;
+        instance = new model(params);
+      } else {
+        instance = new model({
+          id: objectId,
+          href: (paramsOrObject || {}).href
+        });
       }
-      , parent_find_param : "source_id"
-      , draw_children : true
-      , find_function : "findRelated"
-      , related_side : "source"
-      , create_link : true
-    }, {
-      model : null
-      , find_params : {
-        "destination_type" : "OrgGroup"
-        , "source_type" : "OrgGroup"
-        , relationship_type_id: "org_group_relies_upon_org_group"
-      }
-      , parent_find_param : "destination_id"
-      , draw_children : true
-      , start_expanded : false
-      , find_function : "findRelatedSource"
-      , related_side : "destination"
-      , single_object : false
-      , create_link : true
-    }]}
-  , init : function() {
-    var that = this
-    this._super && this._super.apply(this, arguments);
-    $(function(){
-      that.tree_view_options.child_options[0].model = CMS.Models.Process;
-    });
-    this.tree_view_options.child_options[1].model = this;
-    this.risk_tree_options.child_options[1] = can.extend(true, {}, this.tree_view_options.child_options[1]);
-    this.risk_tree_options.child_options[1].create_link = false;
-
-  }
-}, {});
-
-can.Model.Cacheable("CMS.Models.Project", {
-  root_object : "project"
-  , root_collection : "projects"
-  , findAll : "/api/projects"
-  , create : "POST /api/projects"
-  , update : "PUT /api/projects/{id}"
-  , tree_view_options : {
-    list_view : GGRC.mustache_path + "/base_objects/tree.mustache"
-    , child_options : [{
-      model : null
-      , find_params : {
-        "destination_type" : "System"
-        , "source_type" : "Project"
-        , relationship_type_id : "project_has_process"
-      }
-      , parent_find_param : "source_id"
-      , draw_children : true
-      , find_function : "findRelated"
-      , related_side : "source"
-      , create_link : true
-    }]}
-  , init : function() {
-    var that = this;
-    this._super && this._super.apply(this, arguments);
-    this.risk_tree_options.child_options.splice(1, 1);
-    $(function(){
-      that.tree_view_options.child_options[0].model = CMS.Models.Process;
-    });
-  }
-}, {});
-
-can.Model.Cacheable("CMS.Models.Facility", {
-  root_object : "facility"
-  , root_collection : "facilities"
-  , findAll : "/api/facilities"
-  , create : "POST /api/facilities"
-  , update : "PUT /api/facilities/{id}"
-  , tree_view_options : {
-    list_view : GGRC.mustache_path + "/base_objects/tree.mustache"
-    , child_options : [{
-      model : null
-      , find_params : {
-        "destination_type" : "System"
-        , "source_type" : "Facility"
-        , relationship_type_id : "facility_has_process"
-      }
-      , parent_find_param : "source_id"
-      , draw_children : true
-      , find_function : "findRelated"
-      , related_side : "source"
-      , create_link : true
-    }, {
-      model : null
-      , find_params : {
-        "destination_type" : "Facility"
-        , "source_type" : "Facility"
-        , relationship_type_id: "facility_relies_upon_facility"
-      }
-      , parent_find_param : "destination_id"
-      , draw_children : true
-      , start_expanded : false
-      , find_function : "findRelatedSource"
-      , related_side : "destination"
-      , single_object : false
-      , create_link : true
-    }]}
-  , init : function() {
-    var that = this
-    this._super && this._super.apply(this, arguments);
-    $(function(){
-      that.tree_view_options.child_options[0].model = CMS.Models.Process;
-    });
-    this.tree_view_options.child_options[1].model = this;
-    this.risk_tree_options.child_options[1] = can.extend(true, {}, this.tree_view_options.child_options[1]);
-    this.risk_tree_options.child_options[1].create_link = false;
-  }
-}, {});
-
-can.Model.Cacheable("CMS.Models.Product", {
-  root_object : "product"
-  , root_collection : "products"
-  , findAll : "/api/products"
-  , create : "POST /api/products"
-  , update : "PUT /api/products/{id}"
-  , attributes : {
-    type : "CMS.Models.Option.model"
-  }
-  , defaults : {
-    type : {}
-  }
-  , tree_view_options : {
-    list_view : GGRC.mustache_path + "/base_objects/tree.mustache"
-    , child_options : [{
-      model : null
-      , find_params : {
-        "destination_type" : "System"
-        , "source_type" : "Product"
-        , relationship_type_id : "product_has_process"
-      }
-      , parent_find_param : "source_id"
-      , draw_children : true
-      , find_function : "findRelated"
-      , related_side : "source"
-      , create_link : true
-    }, {
-      model : null
-      , find_params : {
-        "destination_type" : "Product"
-        , "source_type" : "Product"
-        , relationship_type_id: "product_relies_upon_product"
-      }
-      , parent_find_param : "destination_id"
-      , draw_children : true
-      , start_expanded : false
-      , find_function : "findRelatedSource"
-      , related_side : "destination"
-      , single_object : false
-      , create_link : true
-    }]}
-  , init : function() {
-    var that = this
-    this._super && this._super.apply(this, arguments);
-    $(function(){
-      that.tree_view_options.child_options[0].model = CMS.Models.Process;
-    });
-    this.tree_view_options.child_options[1].model = this;
-    this.risk_tree_options.child_options[1] = can.extend(true, {}, this.tree_view_options.child_options[1]);
-    this.risk_tree_options.child_options[1].create_link = false;
-  }
-}, {
-  attr : function(key, val) {
-    if(key === "type" && typeof val === "undefined" && this[key] && !this[key].selfLink) {
-      this[key].refresh();
     }
-    return this._super.apply(this, arguments);
-  }
-});
+    return instance;
+  };
 
-can.Model.Cacheable("CMS.Models.Option", {
-  root_object : "option"
-  , root_collection : "options"
-}, {});
+  CMS.Models.get_stub = function (object) {
+    var instance = CMS.Models.get_instance(object);
+    if (!instance) {
+      return;
+    }
+    return instance.stub();
+  };
 
-can.Model.Cacheable("CMS.Models.DataAsset", {
-  root_object : "data_asset"
-  , root_collection : "data_assets"
-  , findAll : "/api/data_assets"
-  , create : "POST /api/data_assets"
-  , update : "PUT /api/data_assets/{id}"
-  , tree_view_options : {
-    list_view : GGRC.mustache_path + "/base_objects/tree.mustache"
-    , child_options : [{
-      model : null
-      , find_params : {
-        "destination_type" : "System"
-        , "source_type" : "DataAsset"
-        , relationship_type_id : "data_asset_has_process"
-      }
-      , parent_find_param : "source_id"
-      , draw_children : true
-      , find_function : "findRelated"
-      , related_side : "source"
-      , create_link : true
-    }, {
-      model : null
-      , find_params : {
-        "destination_type" : "DataAsset"
-        , "source_type" : "DataAsset"
-        , relationship_type_id: "data_asset_relies_upon_data_asset"
-      }
-      , parent_find_param : "destination_id"
-      , draw_children : true
-      , start_expanded : false
-      , find_function : "findRelatedSource"
-      , related_side : "destination"
-      , single_object : false
-      , create_link : true
-    }]}
-  , init : function() {
-    var that = this
-    this._super && this._super.apply(this, arguments);
-    $(function(){
-      that.tree_view_options.child_options[0].model = CMS.Models.Process;
-    });
-    this.tree_view_options.child_options[1].model = this;
-    this.risk_tree_options.child_options[1] = can.extend(true, {}, this.tree_view_options.child_options[1]);
-    this.risk_tree_options.child_options[1].create_link = false;
-  }
-}, {});
-
-can.Model.Cacheable("CMS.Models.Market", {
-  root_object : "market"
-  , root_collection : "markets"
-  , findAll : "/api/markets"
-  , create : "POST /api/markets"
-  , update : "PUT /api/markets/{id}"
-  , tree_view_options : {
-    list_view : GGRC.mustache_path + "/base_objects/tree.mustache"
-    , child_options : [{
-      model : null
-      , find_params : {
-        "destination_type" : "System"
-        , "source_type" : "Market"
-        , relationship_type_id : "market_has_process"
-      }
-      , parent_find_param : "source_id"
-      , draw_children : true
-      , find_function : "findRelated"
-      , related_side : "source"
-      , create_link : true
-    }]}
-  , init : function() {
-    var that = this;
-    this._super && this._super.apply(this, arguments);
-    this.risk_tree_options.child_options.splice(1, 1);
-    $(function(){
-      that.tree_view_options.child_options[0].model = CMS.Models.Process;
-    });
-  }
-}, {});
-
-can.Model.Cacheable("CMS.Models.RiskyAttribute", {
-  root_object : "risky_attribute"
-  , root_collection : "risky_attributes"
-  , findAll : "/api/risky_attributes"
-  , create : "POST /api/risky_attributes"
-  , update : "PUT /api/risky_attributes/{id}"
-}, {});
-
-can.Model.Cacheable("CMS.Models.Risk", {
-  root_object : "risk"
-  , root_collection : "risks"
-  , findAll : function(params) {
-    var root_object =  this.root_object
-    , root_collection = this.root_collection;
-    return $.ajax({
-      url : "/api/risks"
-      , type : "get"
-      , data : params
-      , dataType : "json"
-    }).then(function(risks) {
-      if(risks[root_collection + "_collection"]) {
-        risks = risks[root_collection + "_collection"];
-      }
-      if(risks[root_collection]) {
-        risks = risks[root_collection];
-      }
-
-      can.each(risks, function(r) {
-        if(r[root_object]) {
-          r = r[root_object];
+  CMS.Models.get_stubs = function (objects) {
+    return new can.Stub.List(
+      can.map(CMS.Models.get_instances(objects), function (obj) {
+        if (!obj || !obj.stub) {
+          console.warn('`Models.get_stubs` instance has no stubs ', arguments);
+          return;
         }
-        if(r.hasOwnProperty("trigger")) {
-          r.risk_trigger = r.trigger;
-          delete r.trigger;
-        }
-      });
-      return risks;
-    });
-  }
-  , update : "PUT /api/risks/{id}"
-  , create : function(params) {
-    params.trigger = params.risk_trigger;
-    return $.ajax({
-      type : "POST"
-      , url : "/api/risks"
-      , data : params
-      , dataType : "json"
-    });
-  }
-  , risk_tree_options : { list_view : GGRC.mustache_path + "/risks/tree.mustache", child_options : [], draw_children : false}
-}, {});
+        return obj.stub();
+      }));
+  };
 
-can.Model.Cacheable("CMS.Models.SystemControl", {
-    root_object : "system_control"
-    , root_collection : "system_controls"
-    , findAll: "GET /api/system_controls"
-    , create: "POST /api/system_controls"
-    , destroy : "DELETE /api/system_controls/{id}"
-}, {
-    init : function() {
-        var _super = this._super;
-        function reinit() {
-            var that = this;
-
-            typeof _super === "function" && _super.call(this);
-            this.attr("system", CMS.Models.get_instance(
-              "System",
-              this.system_id || (this.system && this.system.id)));
-            this.attr("control", CMS.Models.get_instance(
-              "Control",
-              this.control_id || (this.control && this.control.id)));
-
-            this.each(function(value, name) {
-              if (value === null)
-              that.removeAttr(name);
-            });
-        }
-
-        this.bind("created", can.proxy(reinit, this));
-
-        reinit.call(this);
+  CMS.Models.get_instances = function (objects) {
+    var i;
+    var instances = [];
+    if (!objects) {
+      return [];
     }
-});
-
-can.Model.Cacheable("CMS.Models.SystemSystem", {
-    root_object : "system_system"
-    , root_collection : "system_systems"
-    , findAll: "GET /api/system_systems"
-    , create: "POST /api/system_systems"
-    , destroy : "DELETE /api/system_systems/{id}"
-}, {
-    init : function() {
-        var _super = this._super;
-        function reinit() {
-            var that = this;
-
-            typeof _super === "function" && _super.call(this);
-            this.attr("parent", CMS.Models.get_instance(
-              "System",
-              this.parent_id || (this.parent && this.parent.id)));
-            this.attr("child", CMS.Models.get_instance(
-              "System",
-              this.child_id || (this.child && this.child.id)));
-
-            this.each(function(value, name) {
-              if (value === null)
-              that.removeAttr(name);
-            });
-        }
-
-        this.bind("created", can.proxy(reinit, this));
-
-        reinit.call(this);
+    for (i = 0; i < objects.length; i++) {
+      instances[i] = CMS.Models.get_instance(objects[i]);
     }
-});
+    return instances;
+  };
 
-can.Model.Cacheable("CMS.Models.Help", {
-  root_object : "help"
-  , root_collection : "helps"
-  , findAll : "GET /api/help"
-  , update : "PUT /api/help/{id}"
-  , create : "POST /api/help"
-}, {});
+  CMS.Models.get_link_type = function (instance, attr) {
+    var type;
+    var model;
 
-CMS.Models.get_instance = function(object_type, object_id, params_or_object) {
-  var model = CMS.Models[object_type]
-    , params = {}
-    ;
-
-  if (!model)
-    return null;
-
-  params.id = object_id;
-
-  if (!!params_or_object) {
-    if ($.isFunction(params_or_object.serialize))
-      $.extend(params, params_or_object.serialize());
-    else
-      $.extend(params, params_or_object || {});
-  }
-
-  return model.findInCacheById(object_id) || new model(params)
-};
-
-CMS.Models.get_link_type = function(instance, attr) {
-  var type
-    , model
-    ;
-
-  type = instance[attr + "_type"];
-  if (!type) {
-    model = instance[attr] && instance[attr].constructor;
-    if (model)
-      type = model.getRootModelName();
-    else
-      type = instance[attr].type;
-  }
-  return type;
-};
-
+    type = instance[attr + '_type'];
+    if (!type) {
+      model = instance[attr] && instance[attr].constructor;
+      if (model) {
+        type = model.shortName;
+      } else if (instance[attr]) {
+        type = instance[attr].type;
+      }
+    }
+    return type;
+  };
 })(this.can);

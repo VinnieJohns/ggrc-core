@@ -1,0 +1,153 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.top-inner-nav {
+  @include box-shadow(inset 1px 4px 9px -6px rgba(0,0,0,0.4));
+  width: 100%;
+  top: 48px;
+  background: $white;
+}
+
+ul.internav {
+  @extend %reset-list;
+  @extend %clearfix;
+  margin-left: 28px;
+  display: flex;
+  flex-flow: row wrap;
+  &.audit {
+    margin-right: 40px;
+    li {
+      &.access_group, &.clause, &.contract, &.control, &.data_asset, &.facility,
+      &.market, &.objective, &.org_group, &.policy, &.process, &.product,
+      &.regulation, &.section, &.standard, &.system, &.vendor {
+        a {
+          color: $blue;
+          @include opacity(1);
+          &:hover {
+            color: $blue;
+          }
+          i {
+            color: $blue;
+          }
+        }
+      }
+      &:nth-child(4) {
+        margin-left: 0;
+        margin-right: auto;
+      }
+      &:nth-child(-n+4) {
+        order: 10;
+      }
+      &:nth-child(n+5) {
+        order: 20;
+      }
+    }
+  }
+  li {
+    &.inner-nav-button {
+      margin-left: auto;
+      align-self: center;
+      padding-right: 40px;
+      .message {
+        color: $green;
+      }
+      .tiny-help-text {
+        padding-top: 4px;
+        font-size: 10px;
+        line-height: 13px;
+        display: inline-block;
+        margin: 0;
+      }
+    }
+    &.hidden-widgets-list {
+      position: relative;
+      a {
+        white-space:nowrap;
+        &.dropdown-toggle {
+          &:hover {
+            background: none;
+          }
+        }
+      }
+    }
+    &.active {
+      a {
+        color: $black;
+        font-weight: bold;
+        background: $contentBgnd;
+        @include opacity(1);
+        i {
+          @include opacity(1);
+        }
+        &:hover {
+          color: $black;
+        }
+      }
+    }
+    &.not-priority-hide {
+      order: 15 !important;
+      display: flex;
+      align-items: center;
+      &.visible {
+        border-left: 1px dotted;
+        border-right: 1px dotted;
+      }
+      i {
+        margin: auto 5px;
+      }
+    }
+    .dropdown-menu {
+      a {
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+    }
+  }
+
+  a {
+    @include transition(color 0.2s ease);
+    padding: 6px 14px 5px 10px;
+    display: block;
+    line-height: 29px;
+    font-size: 13px;
+    color: $black;
+    @include opacity(.7);
+    position: relative;
+    &:hover {
+      color: $black;
+      background: none;
+      text-decoration: none;
+      @include opacity(1);
+      .closed {
+        display: block;
+      }
+    }
+    .closed {
+      display: none;
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 10px;
+      height: 10px;
+      line-height: 10px;
+      cursor: pointer;
+      i {
+        margin-top: 0;
+      }
+      .fa {
+        font-size: 10px;
+        color: $white;
+      }
+      &.red {
+        top: -4px;
+        right: -4px;
+        background-position: -347px -275px;
+      }
+    }
+  }
+  i {
+    margin-top: 6px;
+  }
+}

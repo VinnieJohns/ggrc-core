@@ -1,0 +1,111 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.attachments-list-control{
+  .attachments-list-action {
+    .btn {
+      background: none;
+      padding: 0 0 0 8px;
+
+      .fa {
+        opacity: 1;
+        color: $btnGreen;
+
+        &:hover {
+          color: $icon-color-hover;
+        }
+      }
+    }
+  }
+
+  .attachments-list-alert {
+    float: left;
+    margin: 1px 0 0 -24px;
+
+    & + .attachments-list-control {
+      .attachments-list-title {
+        color: #ce3e3e;
+      }
+    }
+  }
+}
+
+.attachment-list {
+  @extend %reset-list;
+  display: flex;
+  flex-direction: column;
+  .fa {
+    vertical-align: bottom;
+  }
+  .date {
+    color: $gray;
+    font-size: 11px;
+    font-style: italic;
+    margin-right: 4px;
+    line-height: 18px;
+    vertical-align: top;
+  }
+  & > .oneline{
+    margin: 5px 0 10px;
+  }
+  li {
+    display: flex;
+    margin-bottom: 5px;
+    a.title {
+      overflow: hidden !important;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      max-width: 70%;
+      display: inline-block;
+    }
+    .trash-control {
+      padding-left: 16px;
+      display: none;
+    }
+
+    &:hover {
+      .trash-control {
+        display: inherit;
+      }
+    }
+    a {
+      &.more {
+        display: inline;
+        width: auto;
+      }
+    }
+    a.view-link {
+      margin-top: 5px;
+      width: 100%;
+      vertical-align: bottom;
+    }
+    .tree-title-area {
+      margin-top: 0;
+    }
+  }
+
+  .entry-list & {
+    padding: 4px 0 0 0;
+    li {
+      margin-left: -4px;
+      .info-action {
+        @include opacity(1);
+        i {
+          margin-top: 0;
+        }
+      }
+      a {
+        width: auto;
+        display: inline;
+        &:hover {
+          text-decoration: underline;
+          span {
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  }
+}

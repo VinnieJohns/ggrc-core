@@ -1,8 +1,5 @@
-
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By:
-# Maintained By:
 
 from ggrc import db
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -10,72 +7,98 @@ from .mixins import Base
 
 BACKREF_NAME_FORMAT = '{type}_{scope}_categorizable'
 
+
 class Categorization(Base, db.Model):
   __tablename__ = 'categorizations'
 
   category_id = db.Column(
-      db.Integer, db.ForeignKey('categories.id'))
+      db.Integer, db.ForeignKey('categories.id'), nullable=False)
+  category_type = db.Column(db.String)
   categorizable_id = db.Column(db.Integer)
   categorizable_type = db.Column(db.String)
 
   @property
-  def categorizable_attr(self):
-    return BACKREF_NAME_FORMAT.format(
-        type=self.categorizable_type, scope=self.category.scope_id)
+  def category_attr(self):
+    return '{0}_category'.format(self.category_type)
 
   @property
-  def categorizable(self):
-    return getattr(self, self.categorizable_attr)
+  def category(self):
+    return getattr(self, self.category_attr)
 
-  @categorizable.setter
-  def categorizable(self, value):
-    setattr(self, self.categorizable_attr, value)
+  @category.setter
+  def category(self, value):
+    self.category_id = value.id if value is not None else None
+    self.category_type = value.__class__.__name__ if value is not None \
+        else None
+    return setattr(self, self.category_attr, value)
 
   _publish_attrs = [
-      'categorizable',
+      # 'categorizable',
       'category',
-      ]
+  ]
   _update_attrs = []
+
+  @classmethod
+  def eager_query(cls):
+    from sqlalchemy import orm
+    query = super(Categorization, cls).eager_query()
+    return query.options(
+        orm.subqueryload('category'))
+
 
 class Categorizable(object):
   """Subclasses **MUST** provide a declared_attr method that defines the
   relationship and association_proxy. For example:
-    
-  ..
-     
-     @declared_attr
-     def control_categorizations(cls):
-       return cls.categorizations(
-           'control_categorizations', 'control_categories', 100)
+
+  ..  code-block:: python
+
+      @declared_attr
+      def control_categorizations(cls):
+        return cls.categorizations(
+            'control_categorizations',
+            'control_categories',
+            100,
+        )
   """
+
   @classmethod
-  def _categorizations(cls, rel_name, proxy_name, scope):
-    setattr(cls, proxy_name, association_proxy(
-        rel_name, 'category',
-        creator=lambda category: Categorization(
-            category=category,
-            #FIXME add from http session!
-            modified_by_id=1,
-            categorizable_type=cls.__name__,
-            ),
-        ))
-    joinstr = 'and_(foreign(Categorization.categorizable_id) == {type}.id, '\
-                   'foreign(Categorization.categorizable_type) == "{type}", '\
-                   'Categorization.category_id == Category.id, '\
-                   'Category.scope_id == {scope})'
-    joinstr = joinstr.format(type=cls.__name__, scope=scope)
+  def declare_categorizable(cls, category_type, single, plural, ation):
+    setattr(
+        cls, plural,
+        association_proxy(
+            ation, 'category',
+            creator=lambda category: Categorization(
+                category_id=category.id,
+                category_type=category.__class__.__name__,
+                categorizable_type=cls.__name__
+            )
+        )
+    )
+
+    joinstr = (
+        'and_('
+        'foreign(Categorization.categorizable_id) == {type}.id, '
+        'foreign(Categorization.categorizable_type) == "{type}", '
+        'foreign(Categorization.category_type) == "{category_type}"'
+        ')'
+    )
+    joinstr = joinstr.format(type=cls.__name__, category_type=category_type)
+    backref = '{type}_categorizable_{category_type}'.format(
+        type=cls.__name__,
+        category_type=category_type,
+    )
     return db.relationship(
         'Categorization',
         primaryjoin=joinstr,
-        backref=BACKREF_NAME_FORMAT.format(type=cls.__name__, scope=scope),
-        )
+        backref=backref,
+        cascade='all, delete-orphan',
+    )
 
-  # FIXME: make eager-loading work for categorizations/assertations
-  #@classmethod
-  #def eager_query(cls):
-  #  from sqlalchemy import orm
-
-  #  query = super(Categorizable, cls).eager_query()
-  #  return query.options(
-  #      orm.subqueryload_all('categorizations.category'),
-  #      orm.subqueryload_all('assertations.category'))
+  @classmethod
+  def _filter_by_category(cls, category_type, predicate):
+    from ggrc.models.category import CategoryBase
+    return Categorization.query.join(CategoryBase).filter(
+        (Categorization.categorizable_type == cls.__name__) &
+        (Categorization.categorizable_id == cls.id) &
+        predicate(CategoryBase.name)
+    ).exists()

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Copyright (C) 2017 Google Inc.
+# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+
+set -o nounset
+set -o errexit
+
+PROJECT="integration"
+SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
+cd "${SCRIPTPATH}/../.."
+source bin/jenkins/functions.sh
+
+PROJECT=$( project_name "$@" -d "$PROJECT" )
+
+setup $PROJECT
+
+integration_tests $PROJECT && rc=$? || rc=$?
+
+teardown $PROJECT
+
+exit $rc

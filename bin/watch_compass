@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
-
-cd "${SCRIPTPATH}/../src/ggrc"
-compass watch -c assets/compass.config.rb

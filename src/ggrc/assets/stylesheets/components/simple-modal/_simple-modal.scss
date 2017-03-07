@@ -1,0 +1,95 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+$simple-modal-header-height: 42px;
+$grid-data-toolbar-height: 42px;
+$grid-data-header-height: 66px;
+
+.simple-modal__overlay {
+  position: fixed;
+  background: rgba(255, 255, 255, 0.65);
+  top: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  z-index: zIndex(simple-model-overlay);
+}
+
+.simple-modal {
+  text-align: left;
+  border-radius: 2px;
+  box-sizing: border-box;
+  width: auto;
+  max-width: 75%;
+  min-width: 33%;
+  margin: 0;
+  border: 0;
+  background: $white;
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+
+  /* Specific Styles for Prior Responses Modal Window */
+  &.related-assessments {
+    width: 85%;
+    max-width: 85%;
+    height: 85%;
+
+    .simple-modal__body {
+      overflow: hidden;
+      max-height: none;
+      height: calc(100% - #{$simple-modal-header-height});
+    }
+
+    .grid-data-header {
+      box-sizing: border-box;
+      height: $grid-data-header-height;
+    }
+    .grid-data-body {
+      font-size: 13px;
+      height: calc(100% - #{$grid-data-toolbar-height} - #{$grid-data-header-height});
+      box-sizing: border-box;
+      overflow: auto;
+    }
+  }
+
+  .simple-modal__body {
+    box-sizing: border-box;
+    padding: 16px;
+    overflow: auto;
+    background: $white;
+    margin: 0;
+  }
+
+  .simple-modal__header {
+    background: $white;
+    box-sizing: border-box;
+    height: $simple-modal-header-height;
+    padding: 8px;
+    position: relative;
+    margin: 0;
+    border-bottom: 1px solid $border-color;
+    align-items: center;
+
+    .simple-modal__header-text {
+      padding: 0 8px;
+      line-height: 26px;
+      font-size: 16px;
+      font-weight: normal;
+      color: $infoWidgetHeader;
+    }
+  }
+
+  .simple-modal__footer {
+    border-top: 1px solid $border-color;
+    box-sizing: border-box;
+    padding: 8px 16px;
+    margin: 0;
+    overflow: hidden;
+    background: $white;
+  }
+}
+

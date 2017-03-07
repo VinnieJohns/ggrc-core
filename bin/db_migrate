@@ -1,7 +1,24 @@
 #!/usr/bin/env bash
+# Copyright (C) 2017 Google Inc.
+# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+
+set -o nounset
+set -o errexit
 
 SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
 
 cd "${SCRIPTPATH}/../src"
-alembic -c migrations/alembic.ini upgrade head
+
+python -c "\
+import ggrc.migrate
+import sys, os
+dev_prefix = os.environ['DEV_PREFIX']
+old_module_paths = [
+  dev_prefix + '/opt/google_appengine/lib/google-api-python-client',
+  dev_prefix + '/opt/google_appengine/lib/python-gflags',
+  dev_prefix + '/opt/google_appengine/lib/httplib2',
+  ]
+for old_path in old_module_paths:
+  sys.path.insert(0, old_path)
+ggrc.migrate.upgradeall()"
 

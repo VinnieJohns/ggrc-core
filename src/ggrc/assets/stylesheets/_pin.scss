@@ -1,0 +1,55 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.inline-date-wrap {
+  input {
+    margin-bottom: 0;
+  }
+}
+
+.inline-date-label {
+  display: inline-block;
+  line-height: 28px;
+  margin-right: 10px;
+  margin-left: 10px;
+  &:first-child {
+    margin-left: 0;
+  }
+}
+
+.visual-radio {
+  @extend %reset-list;
+  @extend %clearfix;
+  li {
+    float: left;
+    margin-right: 5px;
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+  a {
+    display: block;
+  }
+  i {
+    @include opacity(.25);
+  }
+  .active {
+    i {
+      @include opacity(1);
+    }
+  }
+}
+
+.repeated-utility {
+  @extend %reset-list;
+  @extend %clearfix;
+  li {
+    float: left;
+    margin-right: 10px;
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+}

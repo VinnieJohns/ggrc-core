@@ -1,0 +1,164 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+/* Mapped Object Component CSS spec */
+
+assessment-mapped-controls, assessment-mapped-related-information {
+  margin: 0 0 12px;
+  position: relative;
+  display: block;
+
+  .selected .mapped-objects__item {
+    position: relative;
+    border-radius: 2px;
+    box-shadow: none;
+    transition: background 0.2s ease;
+    background: $lightGray;
+
+    &.mapped-snapshot-item {
+      background: $shapshotBorder;
+    }
+  }
+
+  .mapped-objects__item {
+    &:hover {
+      position: relative;
+      border-radius: 2px;
+      transition: background 0.2s ease;
+      background: rgba(0, 0, 0, 0.02);
+
+      &.mapped-snapshot-item {
+        background: $shapshotBorder;
+        box-shadow: 1px 1px 2px 0 $warmGray;
+
+      }
+    }
+  }
+}
+
+.mapped-objects__item {
+  background: $white;
+  line-height: 24px;
+  box-sizing: border-box;
+  padding: 0 8px 0 4px;
+  margin: 2px 0;
+  font-size: 12px;
+  color: $text;
+  cursor: pointer;
+
+  &.mapped-snapshot-item {
+    background: $snapshotBgnd;
+    border: 1px solid $shapshotBorder;
+    border-radius: 2px
+  }
+
+  .title {
+    color: $middleText;
+    padding: 0 16px 0 24px;
+    position: relative;
+
+    .fa {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+  }
+
+  .title-bold {
+    font-weight: bold;
+  }
+
+  .description {
+    width: 100%;
+    padding: 0 8px 0 28px;
+    box-sizing: border-box;
+  }
+
+  .fa {
+    font-size: 14px;
+    line-height: 24px;
+    color: $text;
+    width: 18px;
+    margin: 0 4px 0 2px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+}
+
+.document-object-item {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  line-height: 20px;
+  padding: 0;
+  margin: 0 0 8px;
+
+  &.document-object-item__with-icon {
+    position: relative;
+    padding-left: 32px;
+
+    .fa {
+      position: absolute;
+      display: flex;
+      left: 0;
+      top: 4px;
+      width: 32px;
+      height: 20px;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+  }
+
+  .document-object-item__body {
+    flex: 0 1;
+
+    .link {
+      line-height: 20px;
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .date {
+      color: #999;
+      line-height: 16px;
+      font-size: 11px;
+      font-style: italic;
+    }
+  }
+}
+.comment-object-item {
+  .comment-list__ca-description {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+    line-height: 20px;
+    max-height: 20px;
+    margin: 0;
+  }
+  .comment-object-item__author {
+    display: flex;
+    flex-direction: row;
+
+    .comment-object-item__author_info {
+      font-size: 12px;
+      font-style: italic;
+      color: #999;
+    }
+
+    person-list-item {
+      font-size: 13px;
+      font-style: normal;
+      margin: 0 8px 0 0;
+    }
+  }
+  .comment-object-item__text {
+    font-size: 13px;
+  }
+}
+

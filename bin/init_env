@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (C) 2017 Google Inc.
+# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 
 SCRIPTPATH="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )"
 
@@ -11,10 +13,17 @@ fi
 
 export DEV_PREFIX="$(cd ${DEV_PREFIX}; pwd -P)"
 
-export GGRC_SETTINGS_MODULE="development"
+export GGRC_SETTINGS_MODULE="development \
+  ggrc_basic_permissions.settings.development \
+  ggrc_risk_assessments.settings.development \
+  ggrc_risks.settings.development \
+  ggrc_workflows.settings.development \
+  ggrc_gdrive_integration.settings.development"
+
+export GGRC_BOOTSTRAP_ADMIN_USERS="user@example.com"
 
 source "${DEV_PREFIX}/opt/dev_virtualenv/bin/activate"
 
-export PYTHONPATH="${PREFIX}/src:${DEV_PREFIX}/opt/google_appengine:${DEV_PREFIX}/opt/linked_packages:${PYTHONPATH}"
+export PYTHONPATH="${PREFIX}/src:${PREFIX}/test/selenium/src:${DEV_PREFIX}/opt/google_appengine:${DEV_PREFIX}/opt/linked_packages:${PYTHONPATH}"
 
-export PATH="${PREFIX}/bin:${DEV_PREFIX}/opt/google_appengine:$PATH"
+export PATH="${PREFIX}/bin:${DEV_PREFIX}/opt/google_appengine:$PATH:${DEV_PREFIX}/node_modules/.bin/"

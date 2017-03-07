@@ -1,3 +1,6 @@
+# Copyright (C) 2017 Google Inc.
+# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+
 # These are installed with --no-deps, due to undesired dependencies, so
 # be explicit about desired dependencies.
 #
@@ -5,13 +8,30 @@
 # - from HamlPy: Jinja2, django, pygments, markdown
 # - from Flask-SQLAlchemy: distribute
 #
-Werkzeug==0.8.3
-Flask==0.9
-Flask-Login==0.2.2
-webassets==0.8
+babel==1.3
+bleach==1.2.2
+blinker==1.3
+chardet==2.1.1
+enum34==1.1.6
 Flask-Assets==0.8
+Flask-Login==0.2.2
+Flask==0.10.1
 git+https://github.com/danring/HamlPy.git#egg=HamlPy
-iso8601
-SQLAlchemy==0.8.0
+google-api-python-client==1.2
+holidays==0.3.1
+html5lib==0.95
+httplib2==0.8
+iso8601==0.1.0
+itsdangerous==0.24
+MonthDelta==0.9.1
+python-dateutil==2.2
+pytz==2015.2
+six==1.10.0
+SQLAlchemy==0.9.4
+tabulate==0.7.5
+webassets==0.8
+Werkzeug==0.9.3
+colorlog==2.7.0
+cached-property==1.3.0
 # Flask-SQLAlchemy must be last - it somehow mangles `distribute` / `setuptools`
-Flask-SQLAlchemy==0.16
+Flask-SQLAlchemy==1.0

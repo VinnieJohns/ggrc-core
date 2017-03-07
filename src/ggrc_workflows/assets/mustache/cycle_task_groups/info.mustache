@@ -1,0 +1,27 @@
+{{!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+
+{{#instance}}
+  <section class="info{{#is_info_pin}} sticky-info-panel{{/is_info_pin}}">
+
+    {{#is_info_pin}}
+      <info-pin-buttons class="details-wrap" maximized="maximized" on-change-maximized-state="@onChangeMaximizedState" on-close="@onClose"></info-pin-buttons>
+    {{/is_info_pin}}
+
+    <div class="tier-content">
+      {{>'/static/mustache/base_objects/general_info.mustache'}}
+      <div class="row-fluid wrap-row">
+        <div class="span12">
+          <h6>{{instance.class.title_singular}} description</h6>
+          <div class="rtf-block">
+            {{{firstnonempty instance.description '<span class="empty-message">None</span>'}}}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+{{/instance}}

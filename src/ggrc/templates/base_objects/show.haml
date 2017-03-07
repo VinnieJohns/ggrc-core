@@ -1,69 +1,29 @@
--# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+-# Copyright (C) 2017 Google Inc.
 -# Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
--# Created By:
--# Maintained By:
 
 -extends "layouts/dashboard.haml"
 
 -set model = controller.model
 -set model_title = model._inflector.title_singular
 -set model_name = model._inflector.table_singular
+-set model_display_class = model|display_class
 
 -block title
   =instance.title
 
--block page_help scoped
-  =model_name
-
 -block extra_javascript
+  =super()
   GGRC.page_object = ={ instance_json()|safe };
 
--block header
-  %ul.breadcrumbs
-    %li=link_to 'dashboard', dashboard_path
-    %li=instance.slug
+  -# Since it is expensive (issues a DB query), only invoke user_task_count()
+  -# once and use the resulting list. An auxiliary property is used to store
+  -# the result, because there are no other better ways (?) to do that in HAML
+  GGRC.counters = {
+    "_task_counts": ={ user_task_count()|safe }
+  }
+  GGRC.counters = {
+    "user_task_count": GGRC.counters._task_counts[0],
+    "user_overdue_task_count": GGRC.counters._task_counts[1]
+  };
 
-  %h1.business
-    .grcobject.business{ 'rel': "tooltip", 'data-placement': "bottom", 'title': "#{model_title}" }
-      -if model_title == "Org Group"
-        %i.grcicon-orggroup
-      -elif model_title == "Market"
-        %i.grcicon-market
-      -elif model_title == "Facility"
-        %i.grcicon-facility
-      -elif model_title == "Project"
-        %i.grcicon-project
-      -elif model_title == "Data Asset"
-        %i.grcicon-dataasset
-      -else
-        &nbsp;
-    =instance.title
-
--block subheader_extras
-  %ul.actions.pull-right
-    %li
-      %a{ 'href': "javascript://", 'data-toggle': 'modal-ajax-form', 'data-object-plural': '={model._inflector.table_plural}', 'data-object-singular': '={model._inflector.model_singular}', 'data-modal-reset': 'reset', 'data-form-target': 'refresh', 'data-modal-class': 'modal-wide', 'title': "Edit #{model_title}", 'data-object-id': 'page' }
-        %i.grcicon-edit
-        %span Edit #{model_title}
-
--block subheader_plus
-  %a.navbarplus.fltrt{ 'href': "url-for-new-#{model_name}", 'data-toggle': 'modal-ajax-form', 'data-modal-reset': 'reset', 'data-form-target': 'redirect', 'data-modal-class': 'modal-wide'}
-
--block main
-  .container-fluid
-    #show_columns.row-fluid{ 'data-resize': "true" }
-      #middle_column.span8.widget-area
-        -with widget_class = 'business'
-          -include 'base_objects/_main.haml'
-        -with widget_class = 'risk'
-          -include 'base_objects/_risks.haml'
-        -if related_objects(instance)
-          -with widget_class = 'widget-tabs widget-tabs-horizontal related business'
-            -include 'shared/_related.haml'
-        -include 'shared/_add_widget_section.haml'
-
-      #right_column.span4.widget-area
-        -with widget_class = 'business'
-          -include 'base_objects/_info.haml'
-          -include 'base_objects/_more_info.haml'
-        -include 'shared/_add_widget_section.haml'
+-block widget_area

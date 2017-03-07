@@ -1,0 +1,173 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+.action-button {
+  box-sizing: border-box;
+  cursor: pointer;
+  padding: 0 16px;
+  line-height: 22px;
+  text-align: center;
+  display: inline-block;
+  font-size: 11px;
+  text-transform: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  min-width: 52px;
+
+  &[disabled] {
+    opacity: 0.47;
+  }
+}
+
+.create-button {
+  background: $blue;
+  color: $white;
+
+  &:hover {
+    background: $link;
+    color: $white;
+    text-decoration: none;
+
+    &[disabled] {
+      background: $blue;
+    }
+  }
+
+}
+
+.map-button {
+  background: $white;
+  font-weight: normal;
+  border: 1px solid $widgetBorder;
+  color: $blue;
+
+  &:hover,
+  &:focus,
+  &:active {
+    border-color: $widgetBorder;
+  }
+}
+
+.view-button {
+}
+
+.btn {
+  outline: none;
+
+  &:focus {
+    outline: none;
+  }
+
+  &.btn-link {
+    color: $blue;
+    font-size: 12px;
+    font-weight: normal;
+    cursor: pointer;
+    border-color: transparent;
+
+    &[disabled] {
+      opacity: 0.47;
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    &:hover {
+      color: $darkBlue;
+    }
+
+    &.selected {
+      background: #40c4ff;
+      color: #fff;
+      border-radius: 3px;
+    }
+  }
+
+  &.btn-icon {
+    padding: 0 6px;
+    line-height: 26px;
+    border-color: transparent;
+    background: transparent;
+
+    .fa {
+      opacity: 1;
+      line-height: 20px;
+      height: 20px;
+      width: 20px;
+      font-size: 16px;
+      color: #797979;
+
+      &:hover {
+        background: $border-color;
+      }
+    }
+
+    &.btn-primary {
+      .fa {
+        color: $blue;
+
+        &:hover {
+          background: transparent;
+        }
+      }
+    }
+
+    &.btn-icon-sm {
+      line-height: 26px;
+      padding: 0 8px;
+
+      .fa {
+        line-height: 26px;
+        font-size: 16px;
+        height: 26px;
+        width: 26px;
+        border-radius: 2px;
+      }
+
+    }
+
+    &.btn-icon-md {
+      line-height: 26px;
+      padding: 0 8px;
+
+      .fa {
+        line-height: 26px;
+        font-size: 20px;
+        height: 26px;
+        width: 26px;
+        border-radius: 2px;
+      }
+
+    }
+
+    &.btn-icon-lg {
+      line-height: 32px;
+      padding: 0 8px;
+
+      .fa {
+        line-height: 32px;
+        font-size: 28px;
+        height: 32px;
+        width: 34px;
+        border-radius: 2px;
+      }
+    }
+  }
+  &.btn-extra-gray {
+    background: $btnPriority;
+    color: $white;
+    font-weight: normal;
+
+    &:hover {
+      background: lighten($btnPriority, 10%);
+    }
+  }
+
+  &.btn-link, &.btn-link:active, &.btn-icon, &.btn-icon:active {
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+  }
+}

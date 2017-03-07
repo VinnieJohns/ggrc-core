@@ -1,0 +1,35 @@
+{{!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+}}
+
+{{^field._pending_delete}}
+  <div class="span-custom2-and-half">{{field.title}}</div>
+  <div class="span-custom1-and-half">{{field.attribute_name}}</div>
+  <div class="span5">
+    {{#attrs}}
+        <div class="row">
+            <div class="span5">
+                <span class="block single-line" title="{{value}}">{{value}}</span>
+            </div>
+            <div class="span5 centered checkbox-wrap">
+                <input can-value="attachment" type="checkbox">
+            </div>
+            <div class="span2 centered checkbox-wrap">
+                <input can-value="comment" type="checkbox">
+            </div>
+        </div>
+    {{/attrs}}
+  </div>
+
+  <div class="span1 centered checkbox-wrap">
+    <input type="checkbox" can-value="field.mandatory">
+  </div>
+  <div class="span2">
+    <div class="pull-right">
+      {{#field}}
+        <a can-click="removeField" href="#"><i class="fa fa-trash"></i></a>
+      {{/field}}
+    </div>
+  </div>
+{{/field._pending_delete}}

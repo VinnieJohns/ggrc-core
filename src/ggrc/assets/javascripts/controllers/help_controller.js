@@ -1,9 +1,7 @@
-/*
- * Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
- * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
- * Created By:
- * Maintained By:
- */
+/*!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
 
 (function(can, $) {
 
@@ -21,8 +19,11 @@ GGRC.Controllers.Modals("GGRC.Controllers.Help", {
   }
 
   , "{$content} input.btn[name='commit'] click" : function(el, ev) {
+    if (!this.options.instance.context)
+      this.options.instance.attr('context', { id: null });
+
     this.bindXHRToButton(this.options.instance.save().done(function() {
-      el.trigger("ajax:flash", { success : "Help content saved successfully"});
+      $(document.body).trigger("ajax:flash", { success : "Help content saved successfully"});
     }), el);
   }
 

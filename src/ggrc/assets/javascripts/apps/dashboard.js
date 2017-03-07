@@ -1,238 +1,263 @@
-/*
- * Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
- * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
- * Created By:
- * Maintained By:
- */
+/*!
+  Copyright (C) 2017 Google Inc.
+  Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
 
-//= require controllers/resize_widgets_controller
-//= require controllers/sortable_widgets_controller
-//= require controllers/dashboard_widgets
-//= require models/simple_models
-//= require controls/control
-//= require sections/section
-//= require pbc/system
+(function ($, can, CMS, GGRC) {
+  var $area = $('.area').first();
+  var defaults;
+  var extraPageOptions;
+  var instance;
+  var location = window.location.pathname;
+  var isAssessmentsView;
+  var isObjectBrowser;
+  var modelName;
+  var widgetList;
 
-(function(namespace, $) {
+  var sortByNameEmail = function (list) {
+    return new list.constructor(can.makeArray(list).sort(function (a, b) {
+      a = a.person || a;
+      b = b.person || b;
+      a = (can.trim(a.name) || can.trim(a.email)).toLowerCase();
+      b = (can.trim(b.name) || can.trim(b.email)).toLowerCase();
+      if (a > b) {
+        return 1;
+      }
+      if (a < b) {
+        return -1;
+      }
+      return 0;
+    }));
+  };
 
-var widget_descriptors = {
-  "program" : {
-    model : CMS.Models.Program
-    , object_type : "program"
-    , object_category : "governance"
-    , object_route : "programs"
-    , object_display : "Programs"
-    , tooltip_view : "/static/mustache/programs/object_tooltip.mustache"
-  }
-  , "directive" : {
-    model : CMS.Models.Directive
-    , object_type : "directive"
-    , object_category : "governance"
-    , object_route : "directives"
-    , object_display : "Regulations/Policies/Contracts"
-  }
-  , "regulation" : {
-    model : CMS.Models.Regulation
-    , object_type : "regulation"
-    , object_category : "governance"
-    , object_route : "directives"
-    , object_display : "Regulations"
-  }
-  , "policy" : {
-    model : CMS.Models.Policy
-    , object_type : "policy"
-    , object_category : "governance"
-    , object_route : "directives"
-    , object_display : "Policies"
-  }
-  , "contract" : {
-    model : CMS.Models.Contract
-    , object_type : "contract"
-    , object_category : "governance"
-    , object_route : "directives"
-    , object_display : "Contracts"
-  }
-  , "org_group" : {
-    model : CMS.Models.OrgGroup
-    , object_type : "org_group"
-    , object_category : "business"
-    , object_route : "org_groups"
-    , object_display : "Org Groups"
-  }
-  , "project" : {
-    model : CMS.Models.Project
-    , object_type : "project"
-    , object_category : "business"
-    , object_route : "projects"
-    , object_display : "Projects"
-  }
-  , "facility" : {
-    model : CMS.Models.Facility
-    , object_type : "facility"
-    , object_category : "business"
-    , object_route : "facilities"
-    , object_display : "Facilities"
-  }
-  , "product" : {
-    model : CMS.Models.Product
-    , object_type : "product"
-    , object_category : "business"
-    , object_route : "products"
-    , object_display : "Products"
-  }
-  , "data_asset" : {
-    model : CMS.Models.DataAsset
-    , object_type : "data_asset"
-    , object_category : "business"
-    , object_route : "data_assets"
-    , object_display : "Data Assets"
-  }
-  , "market" : {
-    model : CMS.Models.Market
-    , object_type : "market"
-    , object_category : "business"
-    , object_route : "markets"
-    , object_display : "Markets"
-  }
-  , "process" : {
-    model : CMS.Models.Process
-    , object_type : "process"
-    , object_category : "business"
-    , object_route : "systems"
-    , object_display : "Processes"
-  }
-  , "system" : {
-    model : CMS.Models.StrictSystem
-    , object_type : "system"
-    , object_category : "business"
-    , object_route : "systems"
-    , object_display : "Systems"
-  }
-  , "control" : {
-    model : CMS.Models.Control
-    , object_type : "control"
-    , object_category : "governance"
-    , object_route : "controls"
-    , object_display : "Controls"
-  }
-  , "risky_attribute" : {
-    model : CMS.Models.RiskyAttribute
-    , object_type : "risky_attribute"
-    , object_category : "risk"
-    , object_route : "risky_attributes"
-    , object_display : "Risky Attributes"
-  }
-  , "risk" : {
-    model : CMS.Models.Risk
-    , object_type : "risk"
-    , object_category : "risk"
-    , object_route : "risks"
-    , object_display : "Risks"
-  }
-  //section isn't a widget but the descriptors are also useful for notes controller
-  , "section" : {
-    model : CMS.Models.Section
-    , object_type : "section"
-    , object_route : "sections"
-    , object_category : "governance"
-  }
-  , "system_process" : {
-    model : CMS.Models.System
-    , object_type : "system_process"
-    , object_category : "business"
-    , object_route : "systems"
-    , object_display : "Systems/Processes"
-    , widget_view : "/static/mustache/systems/object_widget.mustache"
-  }
-  , "sectionslug" : {
-    model : CMS.Models.SectionSlug
-    , object_type : "section"
-    , object_route : "sections"
-    , object_category : "governance"
-  }
-};
-
-var dashboard_menu = {categories : [
-  {
-    title : "Governance / Compliance"
-    , objects: [
-      widget_descriptors.regulation
-      , widget_descriptors.policy
-      , widget_descriptors.contract
-      , widget_descriptors.control
-    ]
-  }, {
-    title : "Asset / Business"
-    , objects: [
-      widget_descriptors.system
-      , widget_descriptors.process
-      , widget_descriptors.org_group
-      , widget_descriptors.project
-      , widget_descriptors.facility
-      , widget_descriptors.product
-      , widget_descriptors.data_asset
-      , widget_descriptors.market
-    ]
-  }, {
-    title : "Risk"
-    , objects: [
-      widget_descriptors.risky_attribute
-      , widget_descriptors.risk
-    ]
-  }
-]};
-
-$(function() {
-
-  CMS.Models.DisplayPrefs.findAll().done(function(data) {
-
-    function bindResizer(ev) {
-        can.getObject("Instances", CMS.Controllers.ResizeWidgets, true)[this.id] = 
-         $(this)
-          .cms_controllers_resize_widgets({
-            model : data[0]
-            , minimum_widget_height : (/dashboard/.test(window.location) ? 97 : 167)
-          }).control(CMS.Controllers.ResizeWidgets);
-
-    }
-    $(".row-fluid[id][data-resize]").each(bindResizer);//get anything that exists on the page already.
-
-    //Then listen for new ones
-    $(document.body).on("mouseover", ".row-fluid[id][data-resize]:not(.cms_controllers_resize_widgets)", bindResizer);
-
-    $(".widget-add-placeholder").cms_controllers_add_widget({
-      widget_descriptors : widget_descriptors
-      , menu_tree : (/dashboard/.test(window.location) ? dashboard_menu : null)
-      , minimum_widget_height : 100
+  var initWidgets = function () {
+    // Ensure each extension has had a chance to initialize widgets
+    can.each(GGRC.extensions, function (extension) {
+      if (extension.init_widgets) {
+        extension.init_widgets();
+      }
     });
-    
-    function bindSortable(ev) {
-        can.getObject("Instances", CMS.Controllers.SortableWidgets, true)[this.id] = 
-         $(this)
-          .cms_controllers_sortable_widgets({
-            model : data[0]
-          }).control(CMS.Controllers.SortableWidgets);    
+  };
+
+  var adminListDescriptors = {
+    people: {
+      model: CMS.Models.Person,
+      roles: new can.List(),
+      init: function () {
+        var self = this;
+        CMS.Models.Role
+          .findAll({scope__in: 'System,Admin'})
+          .done(function (roles) {
+            self.roles.replace(sortByNameEmail(roles));
+          });
+      },
+      object_display: 'People',
+      tooltip_view: '/static/mustache/people/object_tooltip.mustache',
+      header_view:
+        // includes only the filter, not the column headers
+        '/static/mustache/people/filters.mustache',
+      list_view: '/static/mustache/people/object_list.mustache',
+      draw_children: true,
+      fetch_post_process: sortByNameEmail
+    },
+    roles: {
+      model: CMS.Models.Role,
+      extra_params: {scope__in: 'System,Admin,Private Program,Workflow'},
+      object_category: 'governance',
+      object_display: 'Roles',
+      list_view: '/static/mustache/roles/object_list.mustache',
+      fetch_post_process: sortByNameEmail
+    },
+    events: {
+      model: CMS.Models.Event,
+      object_category: 'governance',
+      object_display: 'Events',
+      list_view: '/static/mustache/events/object_list.mustache'
+    },
+    custom_attributes: {
+      parent_instance: CMS.Models.CustomAttributable,
+      model: CMS.Models.CustomAttributable,
+      header_view:
+        GGRC.mustache_path +
+        '/custom_attribute_definitions/tree_header.mustache',
+      show_view:
+        GGRC.mustache_path + '/custom_attribute_definitions/tree.mustache',
+      sortable: false,
+      list_loader: function () {
+        return CMS.Models.CustomAttributable.findAll();
+      },
+      draw_children: true,
+      child_options: [{
+        model: CMS.Models.CustomAttributeDefinition,
+        mapping: 'custom_attribute_definitions',
+        show_view:
+          GGRC.mustache_path +
+          '/custom_attribute_definitions/subtree.mustache',
+        footer_view: null,
+        add_item_view: null
+      }]
     }
-    $(".widget-area").each(bindSortable);//get anything that exists on the page already.
-    //we will need to consider whether to look for late-added ones later.
+  };
+
+  new GGRC.WidgetList('ggrc_admin', {
+    admin: {
+      people: {
+        model: CMS.Models.Person,
+        content_controller: GGRC.Controllers.ListView,
+        content_controller_options: adminListDescriptors.people,
+        widget_id: 'people_list',
+        widget_icon: 'person',
+        show_filter: false,
+        widget_name: function () {
+          return 'People';
+        },
+        widget_info: function () {
+          return '';
+        }
+      },
+      roles: {
+        model: CMS.Models.Role,
+        content_controller: GGRC.Controllers.ListView,
+        content_controller_options: adminListDescriptors.roles,
+        widget_id: 'roles_list',
+        widget_icon: 'role',
+        show_filter: false,
+        widget_name: function () {
+          return 'Roles';
+        },
+        widget_info: function () {
+          return '';
+        }
+      },
+      events: {
+        model: CMS.Models.Event,
+        content_controller: GGRC.Controllers.ListView,
+        content_controller_options: adminListDescriptors.events,
+        widget_id: 'events_list',
+        widget_icon: 'event',
+        widget_name: function () {
+          return 'Events';
+        },
+        widget_info: function () {
+          return '';
+        }
+      },
+      custom_attributes: {
+        widget_id: 'custom_attribute',
+        widget_name: 'Custom Attributes',
+        widget_icon: 'workflow',
+        content_controller: CMS.Controllers.TreeView,
+        content_controller_selector: 'ul',
+        model: CMS.Models.CustomAttributable,
+        widget_initial_content:
+          '<ul' +
+          '  class="tree-structure new-tree colored-list"' +
+          '  data-no-pin="true"' +
+          '></ul>',
+        content_controller_options: adminListDescriptors.custom_attributes
+      }
+    }
   });
 
+  extraPageOptions = {
+    Program: {
+      header_view: GGRC.mustache_path + '/base_objects/page_header.mustache',
+      page_title: function (controller) {
+        return 'GRC Program: ' + controller.options.instance.title;
+      }
+    },
+    Person: {
+      header_view: GGRC.mustache_path + '/base_objects/page_header.mustache',
+      page_title: function (controller) {
+        var instance = controller.options.instance;
+        return /dashboard/.test(window.location) ?
+          'GRC: My Work' :
+          'GRC Profile: ' +
+              (instance.name && instance.name.trim()) ||
+              (instance.email && instance.email.trim());
+      }
+    }
+  };
 
-  $("body").on("click", ".note-trigger, .edit-notes", function(ev) {
+  isAssessmentsView = /^\/assessments_view/.test(location);
+  isObjectBrowser = /^\/objectBrowser\/?$/.test(location);
+
+  if (/^\/\w+\/\d+($|\?|\#)/.test(location) || /^\/dashboard/.test(location) ||
+      isAssessmentsView || isObjectBrowser) {
+    instance = GGRC.page_instance();
+    modelName = instance.constructor.shortName;
+
+    if (GGRC.tree_view.base_widgets_by_type[modelName]) {
+      GGRC.Utils.CurrentPage
+        .initCounts(GGRC.tree_view.base_widgets_by_type[modelName], {
+          type: instance.type,
+          id: instance.id
+        });
+    }
+
+    initWidgets();
+
+    widgetList = GGRC.WidgetList.get_widget_list_for(modelName);
+
+    // the assessments_view only needs the Assessments widget
+    if (isAssessmentsView) {
+      widgetList = {assessment: widgetList.assessment};
+    }
+
+    defaults = Object.keys(widgetList);
+
+    // Remove info and task tabs from object-browser list of tabs
+    if (isObjectBrowser) {
+      defaults.splice(defaults.indexOf('info'), 1);
+      defaults.splice(defaults.indexOf('task'), 1);
+    }
+
+    $area.cms_controllers_page_object(can.extend({
+      widget_descriptors: widgetList,
+      default_widgets: defaults || GGRC.default_widgets || [],
+      instance: GGRC.page_instance(),
+      header_view: GGRC.mustache_path + '/base_objects/page_header.mustache',
+      GGRC: GGRC,  // make the global object available in Mustache templates
+      page_title: function (controller) {
+        return controller.options.instance.title;
+      },
+      page_help: function (controller) {
+        return controller.options.instance.constructor.table_singular;
+      },
+      current_user: GGRC.current_user
+    }, extraPageOptions[modelName]));
+  } else if (/^\/admin\/?$/.test(location)) {
+    $area.cms_controllers_dashboard({
+      widget_descriptors: GGRC.WidgetList.get_widget_list_for('admin'),
+      menu_tree_spec: GGRC.admin_menu_spec,
+      default_widgets: ['people', 'roles', 'events', 'custom_attributes']
+    });
+    initWidgets();
+  } else if (/^\/import|export/i.test(location)) {
+    initWidgets();
+  } else {
+    $area.cms_controllers_dashboard({
+      widget_descriptors: GGRC.widget_descriptors,
+      default_widgets: GGRC.default_widgets
+    });
+  }
+
+  $('body').on('click', '.note-trigger, .edit-notes', function (ev) {
+    var $object = $(ev.target).closest('[data-object-id]');
+    var type = $object.data('object-type');
+    var notesModel = GGRC.widget_descriptors[type].model;
+
     ev.stopPropagation();
-    var $object = $(ev.target).closest("[data-object-id]")
-    , type = $object.data("object-type")
-    , notes_model = widget_descriptors[type].model
-    , sec;
 
-    $(ev.target).closest(".note").cms_controllers_section_notes({
-      section_id : $object.data("object-id") || (/\d+$/.exec(window.location.pathname) || [null])[0]
-      , model_class : notes_model
+    $(ev.target).closest('.note').cms_controllers_section_notes({
+      section_id: $object.data('object-id') ||
+                  (/\d+$/.exec(window.location.pathname) || [null])[0],
+      model_class: notesModel
     });
   });
 
-  $("section[id$=_info_widget]:not([id$=_more_info_widget])").ggrc_controllers_info_widget();
-
-});
-
-})(this, jQuery);
+  // We remove loading class
+  $(window).on('load', function () {
+    $('html').removeClass('no-js');
+  });
+})(window.can.$, window.can, window.CMS, window.GGRC);

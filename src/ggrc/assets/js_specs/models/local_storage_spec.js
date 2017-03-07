@@ -1,16 +1,15 @@
-/*
- * Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
- * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
- * Created By:
- * Maintained By:
- */
+/*!
+    Copyright (C) 2017 Google Inc.
+    Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+*/
 
 //= require models/local_storage
+
 
 describe("can.Model.LocalStorage", function() {
   
   //run-once setup
-  runs(function() {
+  beforeAll(function() {
     can.Model.LocalStorage("SpecModel");
   });
 
@@ -88,13 +87,15 @@ describe("can.Model.LocalStorage", function() {
       expect(success).toBe(true);
     });
 
-    it("fails with status 404 when the id is not found", function() {
+    it("fails with status 404 when the id is not found", function(done) {
       var failure = false;
       SpecModel.findOne({id : 3}).fail(function(xhr) {
         expect(xhr.status).toBe(404);
         failure = true;
       });
-      expect(failure).toBe(true);      
+      waitsFor(function() {
+        return failure;
+      }, done);
     });
   });
 
@@ -119,6 +120,22 @@ describe("can.Model.LocalStorage", function() {
       expect(success).toBe(true);
     });
 
+    it("creates a model with an appropriate ID when the array of IDs is empty", function() {
+      var success = false;
+      window.localStorage.setItem("spec_model:ids", "[]");
+      new SpecModel({ foo : model1.foo }).save().done(function(item) {
+        expect(item.id + 1).not.toBe(item.id); //not infinity, not NaN
+        expect(item.foo).toEqual(model1.foo);
+
+        var ids = JSON.parse(window.localStorage.getItem("spec_model:ids"));
+        expect(ids.length).toEqual(1);
+        expect(window.localStorage.getItem("spec_model:" + ids[0])).toBeDefined();
+        success = true;
+      });
+      window.localStorage.removeItem("spec_model:-Infinity"); //the problem key
+      expect(success).toBe(true);
+    });
+
   });
 
   describe("::update", function() {
@@ -134,13 +151,15 @@ describe("can.Model.LocalStorage", function() {
       expect(success).toBe(true);
     });
 
-    it("fails with status 404 when the id is not found", function() {
+    it("fails with status 404 when the id is not found", function(done) {
       var failure = false;
       new SpecModel().attr({id : 3}).save().fail(function(xhr) {
         expect(xhr.status).toBe(404);
         failure = true;
       });
-      expect(failure).toBe(true);      
+      waitsFor(function() {
+        return failure;
+      }, done);
     });
   });
 
@@ -160,13 +179,15 @@ describe("can.Model.LocalStorage", function() {
       expect(success).toBe(true);
     });
 
-    it("fails with status 404 when the id is not found", function() {
+    it("fails with status 404 when the id is not found", function(done) {
       var failure = false;
       new SpecModel().attr({id : 3}).destroy().fail(function(xhr) {
         expect(xhr.status).toBe(404);
         failure = true;
       });
-      expect(failure).toBe(true);      
+      waitsFor(function() {
+        return failure;
+      }, done);
     });
 
   });

@@ -1,0 +1,277 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.new-tree {
+  .tree-item-add {
+    .add-single-object {
+      padding-top: 4px;
+      select,
+      input {
+        margin-bottom: 5px;
+        margin-top: 0;
+      }
+      .btn {
+        &.btn-footer {
+          margin-top: -4px;
+        }
+      }
+    }
+  }
+  .object-check {
+    padding-right: 20px;
+    text-align: right;
+    &.all-check {
+      label {
+        line-height: 32px;
+        margin-bottom: 0;
+        input {
+          margin-top: -1px;
+        }
+      }
+    }
+  }
+  .object-add {
+    padding-right: 20px;
+    text-align: right;
+    .btn-small {
+      padding-top: 3px;
+      padding-bottom: 3px;
+    }
+  }
+  .task-done {
+    font-size: 13px;
+    color: $green;
+  }
+  .accepted {
+    color: $green;
+  }
+}
+
+.choose-object-wrap {
+  overflow-y: hidden;
+  label {
+    line-height: 28px;
+    margin-bottom: 0;
+    margin-right: 6px;
+    display: inline-block;
+  }
+  select,
+  input {
+    margin-bottom: 0;
+  }
+  .first-row {
+    margin-bottom: 10px;
+  }
+  .indent-row {
+    padding-left: 53px;
+    margin-bottom: 10px;
+    select {
+      margin-right: 4px;
+    }
+  }
+  button {
+    border: none;
+    background: none;
+    padding: 0;
+    i {
+      margin-top: 1px;
+    }
+    &:focus,
+    &:active {
+      outline: 0;
+    }
+  }
+  .choose-object-footer {
+    border-top: 1px solid $footerBorder;
+    padding: 6px 20px 0 20px;
+    .confirm-buttons {
+      text-align: right;
+    }
+  }
+  .add-rule {
+    margin-top: 6px;
+  }
+  &.parent {
+    padding: 0 20px 20px 20px;
+    border-bottom: 1px solid $lightGray;
+  }
+  &.bottom-space {
+    padding-bottom: 20px;
+  }
+}
+
+.inner-row {
+  padding-left: 20px;
+  padding-top: 6px;
+}
+
+.tree-footer {
+  .add-entry {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+}
+
+.task-list {
+  .objective-selector {
+    a {
+      &.disabled {
+        @include opacity(0.2);
+      }
+    }
+  }
+}
+
+.edit-field {
+  .btn {
+    margin-left: 10px;
+  }
+}
+
+.template-setup {
+  overflow: hidden;
+  zoom: 1;
+  h3 {
+    font-size:14px;
+    font-weight:bold;
+    border-bottom:1px solid #eee;
+  }
+}
+
+.lock-wrap {
+  label {
+    margin-bottom: 0;
+  }
+}
+
+.inline-data-content {
+  display:inline-block;
+  line-height:30px;
+  text-overflow: ellipsis;
+  word-wrap:no-wrap;
+  width:100%;
+  &.inline-data-content-small {
+    font-size:11px;
+  }
+  &.oneline {
+    display: block;
+  }
+}
+
+.inline-explanation {
+  color:#777;
+  font-style:italic;
+  line-height:30px;
+  font-size:12px;
+}
+
+.btn.end-cycle.pull-right {
+  margin-top:3px;
+  margin-right:4px;
+}
+
+.text-right {
+  text-align:right;
+}
+
+.error-inline {
+  font-size:11px;
+  color:$error;
+  font-weight:normal;
+}
+
+.repeated-block {
+  padding: 20px 30px;
+  position: relative;
+  h6 {
+    padding-bottom: 6px;
+  }
+  &:nth-child(odd) {
+    background: lighten($lightGray, 3%);
+  }
+  &.info {
+    @include box-shadow(none);
+  }
+  .close-block {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    a {
+      @include opacity(0.35);
+      @include transition(opacity 0.2s ease-in-out);
+      &:hover {
+        @include opacity(1);
+      }
+    }
+  }
+}
+
+.options-wrap {
+  display: none;
+}
+
+.hideable-holder {
+  h6 {
+    display: inline-block;
+  }
+  .field-hide {
+    display: block;
+    float: right;
+    color: $warmGray;
+    font-size: 12px;
+    text-decoration: underline;
+    text-transform: none;
+    font-weight: normal;
+  }
+  [class*="span"] {
+    &.hidden {
+      display: none;
+    }
+  }
+}
+
+.dropdown-wrap {
+  position: relative;
+  .reset-form & {
+    float: left;
+    .dropdown-menu {
+      min-width: 350px;
+      left: auto;
+      right: 0;
+      padding: 10px 15px;
+      margin-top: 3px;
+      .close-dropdown {
+        margin-right: 0;
+      }
+      ul.attr-list {
+        li {
+          width: 50%;
+          &:first-child {
+            width: 100%;
+          }
+        }
+        label {
+          padding-right: 10px;
+        }
+      }
+    }
+  }
+}
+
+.state-value {
+  .reset-form & {
+    float: left;
+    margin: 5px 10px 0 0;
+  }
+}
+
+.people-regular {
+  display: none;
+}
+
+ul.add-task-comment {
+  margin: 20px 0 0;
+  list-style-type: none;
+}

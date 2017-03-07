@@ -1,0 +1,473 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ * Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
+ */
+
+.widget {
+  .tree-action-list {
+    @extend %reset-list;
+    @extend %clearfix;
+    text-align: right;
+    height: 28px;
+    li {
+      display: inline-block;
+      overflow: hidden;
+      margin-left: 10px;
+      line-height: 24px;
+      .item-data {
+        padding-left: 0;
+        float: none;
+        clear: both;
+        overflow: visible;
+      }
+      .tree-title-area {
+        width: 100%;
+      }
+      .info-action {
+        &.relevant-action {
+          padding-right: 0;
+        }
+      }
+      .objective-selector {
+        input {
+          margin-bottom: 0;
+        }
+      }
+      .inline-black {
+        line-height: 30px;
+        color: $black;
+        margin-bottom: 0;
+        margin-right: 4px;
+      }
+      &.inner-space-action {
+        width: 20px;
+        height: 1px;
+      }
+      &.left-space {
+        margin-right: 30px;
+      }
+    }
+    [class^="grcicon-"] {
+      margin-top: 6px;
+    }
+    &.tasks-action {
+      float: right;
+      li {
+        float: none;
+        display: inline-block;
+      }
+    }
+  }
+  .header {
+    &.tree-header-content {
+      position: absolute;
+      z-index: 1; 
+      background-color: $contentBgnd;
+      margin: -20px -40px 0px -40px;
+      padding-left: 40px;
+      padding-right: 40px;
+      border-top: solid $contentBgnd;
+      border-width: 20px;
+    }
+    &.tree-header {
+      padding: 0 12px 0 70px;
+      font-size: 11px;
+      text-transform: uppercase;
+      height: 32px;
+      top: 42px;
+      background: #e0e0e0;
+      z-index: zIndex(tree-header);
+      [class^="span"] {
+        line-height: 32px;
+        height: 32px;
+      }
+
+      &.no-filter {
+        top: 0px;
+      }
+
+      .visible-columns-icon {
+        position: relative;
+        left: 5px;
+        top: 8px;
+        display: block;
+      }
+
+      .tree-header-selector {
+        margin-left: -70px;
+        float: left;
+        position: relative;
+      }
+
+      .visible-columns-list {
+        @include border-radius(0);
+        position: absolute;
+        top: 23px;
+        left: 5px;
+        padding: 14px 30px 20px 30px;
+        min-width: 720px;
+        max-width: 860px;
+        text-align: left;
+        h5 {
+          font-size: 16px;
+          font-weight: normal;
+          text-transform: none;
+          line-height: 24px;
+        }
+        label {
+          font-size: 12px;
+        }
+        .attr-list {
+          margin-top: 11px;
+          margin-bottom: 14px;
+          li {
+            margin: 0;
+            text-transform: none;
+            label {
+              @extend %oneline;
+              display: inline-block;
+              cursor: pointer;
+            }
+            &.disabled {
+              color: $gray;
+              label {
+                cursor: not-allowed;
+              }
+            }
+          }
+        }
+      }
+
+      .tree-action-list {
+        height: 32px;
+
+        .open {
+          .fa-share-alt {
+            @include opacity(1);
+            color: #2196f3;
+          }
+        }
+
+        .map-button {
+          line-height: 22px;
+          background: $blue;
+          color: $white;
+          padding: 0 16px;
+          border: 1px solid transparent;
+
+          &:hover {
+            background: $link;
+            color: $white;
+            text-decoration: none;
+
+            &[disabled] {
+              background: $blue;
+            }
+          }
+        }
+
+        .fa {
+          color: $black;
+          margin-top: 1px;
+          @include opacity(0.5);
+          @include transition(opacity 0.2s ease);
+          margin-top: 1px;
+        }
+
+        .details-wrap {
+          margin-left: 0;
+        }
+
+        li {
+          position: relative;
+          overflow: visible;
+          line-height: 32px;
+          vertical-align: top;
+          .counter {
+            @include opacity(1);
+          }
+          .dropdown-menu:not(.tree-action-list-items) {
+            @include border-radius(0);
+            right: -12px;
+            left: auto;
+            top: 20px;
+            padding: 14px 30px 20px 30px;
+            min-width: 720px;
+            text-align: left;
+            h5 {
+              font-size: 16px;
+              font-weight: normal;
+              text-transform: none;
+              line-height: 24px;
+            }
+            label {
+              font-size: 12px;
+            }
+            .attr-list {
+              margin-top: 11px;
+              margin-bottom: 14px;
+              li {
+                margin: 0;
+                text-transform: none;
+                label {
+                  @extend %oneline;
+                  display: inline-block;
+                  cursor: pointer;
+                }
+                &.disabled {
+                  color: $gray;
+                  label {
+                    cursor: not-allowed;
+                  }
+                }
+              }
+            }
+          }
+          .dropdown-menu2 {
+            @include border-radius(0);
+            right: -12px;
+            left: auto;
+            top: 20px;
+            padding: 14px 30px 20px 30px;
+            min-width: 680px;
+            text-align: left;
+            h5 {
+              font-size: 16px;
+              font-weight: normal;
+              text-transform: none;
+              line-height: 24px;
+              vertical-align: top;
+            }
+            label {
+              font-size: 12px;
+            }
+            .model-list {
+              margin-top: 11px;
+              margin-bottom: 14px;
+              li {
+                margin: 0;
+                text-transform: none;
+                label {
+                  @extend %oneline;
+                  display: inline-block;
+                  cursor: pointer;
+                }
+                &.disabled {
+                  color: $gray;
+                  label {
+                    cursor: not-allowed;
+                  }
+                }
+              }
+            }
+            .select-clear-all {
+              margin-bottom: 5px;
+              li {
+                margin: 0;
+                text-transform: none;
+                float: right;
+                width: 15%;
+                clear: none;
+                font-size: 11px;
+                a {
+                  margin: 0;
+                  text-decoration: underline;
+                  text-align: right;
+                  cursor: pointer;
+                  color: #505050;
+                  &:hover {
+                    text-decoration: none;
+                    background-color: #eeeeee;
+                  }
+                }
+              }
+            }
+          }
+          .dropdown-menu.tree-action-list-items {
+            & > li,
+            & > * > li{
+              display: list-item;
+              margin-left: 0;
+              text-align: left;
+              position: static;
+              font-size: 13px;
+
+              .dropdown-toggle {
+                height: auto;
+              }
+
+              .dropdown-menu {
+                top: -11px;
+                right: - 14px;
+
+                .btn {
+                  display: inline-block;
+                  text-transform: none;
+                  color: #fff;
+                  font-weight: bold;
+
+                  &.btn-small {
+                    line-height: 18px;
+                    padding: 4px 14px;
+                  }
+                }
+
+                .btn-info {
+                  background: #40c4ff;
+                }
+              }
+
+              a {
+                color: #000;
+                > i {
+                  color: #000;
+                }
+                &.active > i {
+                  color: #000;
+                }
+                &.close-dropdown {
+                  padding: 0;
+                  line-height: normal;
+
+                  > i {
+                    color: #000;
+                  }
+
+                  &:hover {
+                    background: none;
+                  }
+                }
+
+                .fa {
+                  color: #000;
+                  opacity: 0.7;
+                }
+              }
+            }
+          }
+          .action-button {
+            vertical-align: top;
+          }
+          .details-wrap > a {
+            padding-top: 8px;
+            padding-bottom: 8px;
+          }
+          &.filter-trigger {
+            .active {
+              i {
+                @include opacity(1);
+              }
+            }
+          }
+          &.open {
+            a {
+              [class^="grcicon-"] {
+                @include opacity(1);
+              }
+            }
+          }
+        }
+        a {
+          &:hover {
+            [class^="grcicon-"] {
+              @include opacity(1);
+            }
+          }
+        }
+      }
+      &.no-left-space {
+        padding-left: 10px;
+      }
+    }
+  }
+}
+
+ul.select-clear-all {
+  @extend %reset-list;
+  @extend %clearfix;
+}
+
+ul.new-tree {
+  li.tree-item {
+    &.active {
+      > .item-main {
+        > .item-wrap {
+          > .select {
+            > .item-data {
+              > .row-fluid {
+                > .span4 {
+                  > .tree-action-list {
+                    > .show-details {
+                      > a {
+                        > i {
+                          @include opacity(1);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.widget-col-title {
+  display: inline-block;
+  cursor: pointer;
+  i {
+    margin-top: 1px;
+    display: none;
+  }
+  &.asc,
+  &.desc {
+    i {
+      display: inline-block;
+    }
+  }
+  &.asc {
+    i {
+      &:before {
+        content: $fa-var-caret-up;
+      }
+    }
+  }
+  &.desc {
+    i {
+      &:before {
+        content: $fa-var-caret-down;
+      }
+    }
+  }
+}
+
+ul.attr-list,
+ul.model-list {
+  @extend %reset-list;
+  @extend %clearfix;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  .attribute-wrap & {
+    margin: 0;
+  }
+  li {
+    float: left;
+    width: 16.66%;
+    .attribute-wrap & {
+      width: auto;
+      margin-right: 15px;
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+    input {
+      margin-top: -3px;
+    }
+    &.disabled {
+      color: $lightGray;
+    }
+  }
+}

@@ -1,21 +1,30 @@
-
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By:
-# Maintained By:
 
 from ggrc import db
-from .mixins import Base, Described
+from ggrc.models.deferred import deferred
+from ggrc.models.mixins import Base, Described
 
-class Option(Base, Described, db.Model):
+
+class Option(Described, Base, db.Model):
   __tablename__ = 'options'
 
   role = db.Column(db.String)
-  title = db.Column(db.String)
-  required = db.Column(db.Boolean)
+  # TODO: inherit from Titled mixin (note: title is nullable here)
+  title = deferred(db.Column(db.String), 'Option')
+  required = deferred(db.Column(db.Boolean), 'Option')
+
+  @staticmethod
+  def _extra_table_args(cls):
+    return (
+        db.Index('ix_options_role', 'role'),
+    )
 
   _publish_attrs = [
       'role',
       'title',
       'required',
-      ]
+  ]
+  _sanitize_html = [
+      'title',
+  ]

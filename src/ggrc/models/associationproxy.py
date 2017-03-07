@@ -1,8 +1,5 @@
-
-# Copyright (C) 2013 Google Inc., authors, and contributors <see AUTHORS file>
+# Copyright (C) 2017 Google Inc.
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
-# Created By:
-# Maintained By:
 
 from sqlalchemy.ext.associationproxy \
     import association_proxy as orig_association_proxy
@@ -23,5 +20,4 @@ def association_proxy(target_collection, attr, model_class):
   return orig_association_proxy(target_collection, attr, creator=\
       lambda arg: resolve_class(model_class)(**{
         attr: arg,
-        'modified_by_id': 1, #FIXME
         }))
