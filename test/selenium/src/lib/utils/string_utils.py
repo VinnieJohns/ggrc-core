@@ -58,3 +58,8 @@ def convert_to_list(items):
   - if are not list items then convert to list items."""
   list_items = items if isinstance(items, list) else [items, ]
   return list_items
+
+
+def get_exp_to_filter_by_titles(titles):
+  """Get string expression to filter data by titles."""
+  return " or ".join(['title="' + s + '"' for s in titles])
