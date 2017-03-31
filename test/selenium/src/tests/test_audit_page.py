@@ -384,3 +384,32 @@ class TestAuditPage(base.Test):
     actual_objs = [actual_controls, actual_programs]
     assert expected_objs == actual_objs, (
         messages.ERR_MSG_FORMAT.format(expected_objs, actual_objs))
+
+  @pytest.mark.smoke_tests
+  def test_snapshoted_control_filtering(
+    self, create_audit_and_update_original_control, selenium
+  ):
+    """Check via UI that Audit contains snapshotable Control that does not
+    equal updated version Control without version updating Control.
+    """
+    fixture_objects = create_audit_and_update_original_control
+    updated_control = fixture_objects["updated_control"]
+    snapshoted_control = fixture_objects["control"]
+    audit = fixture_objects["audit"]
+    # open mapper
+    web_ui = webui_service.ControlsService(selenium)
+    search_for_updated_ctrl = web_ui.get_list_objs_from_mapper_tree_view(
+        src_obj=audit, dest_objs=[updated_control])
+    assert updated_control in search_for_updated_ctrl
+    search_for_snapshoted_ctrl = web_ui.get_list_objs_from_mapper_tree_view(
+        src_obj=audit, dest_objs=[snapshoted_control])
+    assert snapshoted_control not in search_for_snapshoted_ctrl
+    assert updated_control not in search_for_snapshoted_ctrl
+    #a = web_ui.search_objs_via_tree_view(src_obj=audit, dest_objs=[updated_control])
+    # search (set scopes -> get list of objects)
+    # compare
+    # search again
+    # compare
+    # get drunk
+    #print web_ui.get_list_objs_from_mapper_tree_view(src_obj=audit, dest_objs=[updated_control])
+    # check that

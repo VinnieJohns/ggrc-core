@@ -135,10 +135,10 @@ class ControlEntity(Entity):
         code=self.code, state=self.state, last_update=self.last_update)
 
   def __eq__(self, other):
-    return (isinstance(other, self.__class__) and self.type == other.type and
-            self.title == other.title and self.code == other.code and
+    return ((isinstance(other, self.__class__) and self.type == other.type and
+            self.title == other.title  and self.code == other.code and
             self.state == other.state and self.owner == other.owner and
-            self.primary_contact == other.primary_contact)
+            self.primary_contact == other.primary_contact))
 
 
 class AuditEntity(Entity):

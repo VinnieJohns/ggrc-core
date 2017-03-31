@@ -2,6 +2,7 @@
 # Licensed under http://www.apache.org/licenses/LICENSE-2.0 <see LICENSE file>
 """Modals for map objects."""
 
+from selenium.webdriver.common.by import By
 from lib import base
 from lib.constants import locator
 from lib.utils import string_utils, selenium_utils
@@ -11,7 +12,7 @@ class CommonUnifiedMapperModal(base.Modal):
   """Common unified mapper modal."""
   _locators = locator.ModalMapObjects
 
-  def __init__(self, driver):
+  def __init__(self, driver, obj_name):
     super(CommonUnifiedMapperModal, self).__init__(driver)
     # labels
     self.title_modal = base.Label(driver, self._locators.MODAL_TITLE)
@@ -24,6 +25,7 @@ class CommonUnifiedMapperModal(base.Modal):
     self.filter_by_state_text_box = base.DropdownStatic(
         driver, self._locators.FILTER_BY_STATE_DROPDOWN,
         self._locators.FILTER_BY_STATE_DROPDOWN_OPTIONS)
+    self.tree_view = TreeView(driver, obj_name)
 
   def select_dest_obj_type(self, obj_name, is_asmts_generation=False):
     """Open dropdown and select element according to destination object name.
@@ -71,7 +73,7 @@ class CommonUnifiedMapperModal(base.Modal):
         self._driver, locator.TreeView.NO_RESULTS_MESSAGE)
 
   def filter_and_search_dest_objs(self, dest_objs_type, dest_objs_titles,
-                                  is_asmts_generation=False):
+                                     is_asmts_generation=False):
     """Filter and search destination objects according to them type and titles.
     If is_asmts_generation then TextFilterDropdown is using.
     """
@@ -80,6 +82,27 @@ class CommonUnifiedMapperModal(base.Modal):
     self.filter_dest_objs_via_expression_by_titles(
         objs_titles=dest_objs_titles)
     self.search_dest_objs()
+    return self.tree_view.get_list_members_as_list_scopes()
+
+  def get_list_of_objs_from_search_results(self, dest_objs_type, dest_objs_titles,
+                                     is_asmts_generation=False):
+    # filter and search
+    # set fields
+    # get list of objects
+    # return list
+    self.get_obj()
+    self.get_is_checked()
+    self.get_is_enabled()
+
+  def filter_search_and_get_list_objs(self, dest_objs_type, dest_objs_titles,
+                                         is_asmts_generation=False):
+    """Filter and search destination objects according to them type and titles.
+       If is_asmts_generation then TextFilterDropdown is using.
+       Return list of objects found
+    """
+    self.filter_and_search_dest_objs(dest_objs_type, dest_objs_titles,
+                                     is_asmts_generation=is_asmts_generation)
+    objs_list = self.get_list_of_objs_from_search_results(dest_objs_type)
 
   def filter_search_and_map_dest_objs(self, dest_objs_type, dest_objs_titles,
                                       is_asmts_generation=False):
@@ -93,15 +116,39 @@ class CommonUnifiedMapperModal(base.Modal):
     self.confirm_map_selected()
 
 
+class TreeView(base.TreeView):
+  _locators = locator.UnifiedMapperTreeView
+
+  def __init__(self, driver, obj_name):
+    super(TreeView, self).__init__(driver, obj_name)
+    self.locator_set_visible_fields = (By.CSS_SELECTOR,
+                                       self._locators.BUTTON_SHOW_FIELDS)
+    self._tree_view_header_elements = []
+    self._tree_view_items_elements = []
+    self._tree_view_items = []
+
+  def open_set_visible_fields(self):
+    """Click to Set Visible Fields button on Tree View to open
+    Set Visible Fields modal.
+    Return: lib.page.modal.set_fields.SetVisibleFieldsModal
+    """
+    _locator_set_visible_fields = self.locator_set_visible_fields
+    base.Button(self._driver, _locator_set_visible_fields).click()
+    return SetVisibleFieldsModal(self._driver, self.fields_to_set)
+
+
+class SetVisibleFieldsModal(base.SetVisibleFieldsModal):
+  """Modal to select and set visible fields for objects to represent them on
+  Tree View."""
+  _locators = locator.ModalSetVisibleFieldsMapper
+
+
 class MapObjectsModal(CommonUnifiedMapperModal):
   """Modal for map objects."""
   _locators = locator.ModalMapObjects
 
-  def __init__(self, driver):
-    super(MapObjectsModal, self).__init__(driver)
-    # user input elements
-    self.button_create_obj = base.Button(
-        driver, self._locators.BUTTON_CREATE_OBJ)
+  def __init__(self, driver, obj_name):
+    super(MapObjectsModal, self).__init__(driver, obj_name)
 
 
 class SearchObjectsModal(CommonUnifiedMapperModal):
